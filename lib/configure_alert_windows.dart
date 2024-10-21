@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'config.dart';
 
 class ConfigureAlertWindowsPage extends StatefulWidget {
-  const ConfigureAlertWindowsPage({Key? key}) : super(key: key);
+  const ConfigureAlertWindowsPage({super.key});
 
   @override
   _ConfigureAlertWindowsPageState createState() => _ConfigureAlertWindowsPageState();
@@ -18,7 +18,7 @@ class _ConfigureAlertWindowsPageState extends State<ConfigureAlertWindowsPage> {
     for (int hour = 0; hour <= 6; hour++) {
       for (int minute = 0; minute < 60; minute += 30) {
         if (hour == 0 && minute == 0) continue; // Skip 0:00
-        String time = '${hour > 0 ? hour.toString() + ' hr ' : ''}${minute > 0 ? minute.toString() + ' min' : ''}';
+        String time = '${hour > 0 ? '$hour hr ' : ''}${minute > 0 ? '$minute min' : ''}';
         times.add(time.trim());
       }
     }

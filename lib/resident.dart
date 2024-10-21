@@ -5,13 +5,13 @@ import 'view_logs.dart';
 import 'view_alerts.dart';
 
 class ResidentPortal extends StatelessWidget {
-  const ResidentPortal({Key? key}) : super(key: key);
+  const ResidentPortal({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Resident Portal'),
+        title: const Text('Resident Portal'),
         backgroundColor: AppColors.primaryColor,
       ),
       drawer: Drawer(
@@ -19,7 +19,7 @@ class ResidentPortal extends StatelessWidget {
           padding: EdgeInsets.zero,
           children: [
             DrawerHeader(
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 color: AppColors.primaryColor,
               ),
               child: Text(
@@ -31,8 +31,8 @@ class ResidentPortal extends StatelessWidget {
               ),
             ),
             ListTile(
-              leading: Icon(Icons.access_time),
-              title: Text('Time Configuration Settings'),
+              leading: const Icon(Icons.access_time),
+              title: const Text('Time Configuration Settings'),
               onTap: () {
                 Navigator.push(
                   context,
@@ -46,8 +46,8 @@ class ResidentPortal extends StatelessWidget {
               },
             ),
             ListTile(
-              leading: Icon(Icons.list),
-              title: Text('View Logs'),
+              leading: const Icon(Icons.list),
+              title: const Text('View Logs'),
               onTap: () {
                 Navigator.push(
                   context,
@@ -61,8 +61,8 @@ class ResidentPortal extends StatelessWidget {
               },
             ),
             ListTile(
-              leading: Icon(Icons.warning),
-              title: Text('View Alerts'),
+              leading: const Icon(Icons.warning),
+              title: const Text('View Alerts'),
               onTap: () {
                 Navigator.push(
                   context,
@@ -76,8 +76,8 @@ class ResidentPortal extends StatelessWidget {
               },
             ),
             ListTile(
-              leading: Icon(Icons.logout),
-              title: Text('Log Out'),
+              leading: const Icon(Icons.logout),
+              title: const Text('Log Out'),
               onTap: () {
                 Navigator.popUntil(context, (route) => route.isFirst);
               },
@@ -85,7 +85,7 @@ class ResidentPortal extends StatelessWidget {
           ],
         ),
       ),
-      body: Center(
+      body: const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[

@@ -5,13 +5,13 @@ import 'view_logs.dart';
 import 'view_alerts.dart';
 
 class AdminPortal extends StatelessWidget {
-  const AdminPortal({Key? key}) : super(key: key);
+  const AdminPortal({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Admin Portal'),
+        title: const Text('Admin Portal'),
         backgroundColor: AppColors.primaryColor,
       ),
       drawer: Drawer(
@@ -19,7 +19,7 @@ class AdminPortal extends StatelessWidget {
           padding: EdgeInsets.zero,
           children: [
             DrawerHeader(
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 color: AppColors.primaryColor,
               ),
               child: Text(
@@ -31,8 +31,8 @@ class AdminPortal extends StatelessWidget {
               ),
             ),
             ListTile(
-              leading: Icon(Icons.article),
-              title: Text('View Logs'),
+              leading: const Icon(Icons.article),
+              title: const Text('View Logs'),
               onTap: () {
                 Navigator.push(
                   context,
@@ -46,8 +46,8 @@ class AdminPortal extends StatelessWidget {
               },
             ),
             ListTile(
-              leading: Icon(Icons.notifications),
-              title: Text('View Alerts'),
+              leading: const Icon(Icons.notifications),
+              title: const Text('View Alerts'),
               onTap: () {
                 Navigator.push(
                   context,
@@ -61,8 +61,8 @@ class AdminPortal extends StatelessWidget {
               },
             ),
             ListTile(
-              leading: Icon(Icons.settings),
-              title: Text('Settings'),
+              leading: const Icon(Icons.settings),
+              title: const Text('Settings'),
               onTap: () {
                 Navigator.push(
                   context,
@@ -73,8 +73,8 @@ class AdminPortal extends StatelessWidget {
               },
             ),
             ListTile(
-              leading: Icon(Icons.logout),
-              title: Text('Log Out'),
+              leading: const Icon(Icons.logout),
+              title: const Text('Log Out'),
               onTap: () {
                 Navigator.popUntil(context, (route) => route.isFirst);
               },
@@ -82,7 +82,7 @@ class AdminPortal extends StatelessWidget {
           ],
         ),
       ),
-      body: Center(
+      body: const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[

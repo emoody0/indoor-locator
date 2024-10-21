@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'config.dart';
 
 class NewHouseSetupPage extends StatefulWidget {
-  const NewHouseSetupPage({Key? key}) : super(key: key);
+  const NewHouseSetupPage({super.key});
 
   @override
   _NewHouseSetupPageState createState() => _NewHouseSetupPageState();
@@ -144,7 +144,7 @@ class _NewHouseSetupPageState extends State<NewHouseSetupPage> {
             child: Container(
               color: Colors.white,
               padding: const EdgeInsets.all(8.0),
-              child: Text(
+              child: const Text(
                 'Scale: 1 sq unit = 1 ft',
                 style: TextStyle(fontSize: 14, color: Colors.black),
               ),
@@ -159,7 +159,7 @@ class _NewHouseSetupPageState extends State<NewHouseSetupPage> {
 class RoomWidget extends StatefulWidget {
   final VoidCallback onDelete;
 
-  const RoomWidget({Key? key, required this.onDelete}) : super(key: key);
+  const RoomWidget({super.key, required this.onDelete});
 
   @override
   _RoomWidgetState createState() => _RoomWidgetState();
@@ -168,7 +168,7 @@ class RoomWidget extends StatefulWidget {
 class _RoomWidgetState extends State<RoomWidget> {
   double width = 100;
   double height = 100;
-  Offset position = Offset(50, 100);
+  Offset position = const Offset(50, 100);
   bool isLocked = false;
   String roomName = 'Room';
 
@@ -381,6 +381,8 @@ class _RoomWidgetState extends State<RoomWidget> {
 }
 
 class DoorWidget extends StatefulWidget {
+  const DoorWidget({super.key});
+
   @override
   _DoorWidgetState createState() => _DoorWidgetState();
 }
@@ -388,7 +390,7 @@ class DoorWidget extends StatefulWidget {
 class _DoorWidgetState extends State<DoorWidget> {
   double width = 50;
   double height = 10;
-  Offset position = Offset(150, 200);
+  Offset position = const Offset(150, 200);
 
   @override
   Widget build(BuildContext context) {
@@ -422,6 +424,8 @@ class _DoorWidgetState extends State<DoorWidget> {
 }
 
 class WallWidget extends StatefulWidget {
+  const WallWidget({super.key});
+
   @override
   _WallWidgetState createState() => _WallWidgetState();
 }
@@ -429,7 +433,7 @@ class WallWidget extends StatefulWidget {
 class _WallWidgetState extends State<WallWidget> {
   double width = 100;
   double height = 10;
-  Offset position = Offset(200, 300);
+  Offset position = const Offset(200, 300);
 
   @override
   Widget build(BuildContext context) {
