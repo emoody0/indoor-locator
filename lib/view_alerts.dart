@@ -4,7 +4,7 @@ import 'config.dart';
 class ViewAlertsPage extends StatefulWidget {
   final bool isAdmin;
 
-  const ViewAlertsPage({Key? key, required this.isAdmin}) : super(key: key);
+  const ViewAlertsPage({super.key, required this.isAdmin});
 
   @override
   _ViewAlertsPageState createState() => _ViewAlertsPageState();
@@ -19,7 +19,7 @@ class _ViewAlertsPageState extends State<ViewAlertsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('View Alerts'),
+        title: const Text('View Alerts'),
         backgroundColor: AppColors.primaryColor,
       ),
       body: Padding(
@@ -29,7 +29,7 @@ class _ViewAlertsPageState extends State<ViewAlertsPage> {
             if (widget.isAdmin) ...[
               DropdownButtonFormField<String>(
                 value: selectedUser,
-                decoration: InputDecoration(labelText: 'Filter by User'),
+                decoration: const InputDecoration(labelText: 'Filter by User'),
                 items: <String>['User1', 'User2', 'User3']
                     .map((user) => DropdownMenuItem(
                           value: user,
@@ -42,10 +42,10 @@ class _ViewAlertsPageState extends State<ViewAlertsPage> {
                   });
                 },
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 value: selectedHouse,
-                decoration: InputDecoration(labelText: 'Filter by House'),
+                decoration: const InputDecoration(labelText: 'Filter by House'),
                 items: <String>['House1', 'House2', 'House3']
                     .map((house) => DropdownMenuItem(
                           value: house,
@@ -58,11 +58,11 @@ class _ViewAlertsPageState extends State<ViewAlertsPage> {
                   });
                 },
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
             ],
             DropdownButtonFormField<String>(
               value: selectedSensor,
-              decoration: InputDecoration(labelText: 'Filter by Space'),
+              decoration: const InputDecoration(labelText: 'Filter by Space'),
               items: <String>['Bedroom', 'Living Room', 'Kitchen']
                   .map((space) => DropdownMenuItem(
                         value: space,
@@ -75,7 +75,7 @@ class _ViewAlertsPageState extends State<ViewAlertsPage> {
                 });
               },
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () {
                 // Clear the filter selections
@@ -87,10 +87,10 @@ class _ViewAlertsPageState extends State<ViewAlertsPage> {
               },
               child: const Text('Clear Filters'),
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             Expanded(
               child: ListView(
-                children: [
+                children: const [
                   // Here would be the code to display the filtered alerts based on the selected criteria.
                   Text('Displaying alerts...'),
                 ],

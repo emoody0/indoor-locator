@@ -11,12 +11,10 @@ class AppColors {
     secondary: Colors.green,
     secondaryContainer: Colors.greenAccent, // Updated from secondaryVariant
     surface: Colors.white,
-    background: Colors.grey,
     error: Colors.red,
     onPrimary: Colors.white,
     onSecondary: Colors.white,
     onSurface: Colors.black,
-    onBackground: Colors.black,
     onError: Colors.white,
     brightness: Brightness.light,
   );
