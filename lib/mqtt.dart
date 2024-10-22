@@ -113,6 +113,29 @@ class _ManageClientServerPageState extends State<ManageClientServerPage> {
     }
   }
 
+  // Build connection status indicator (red for disconnected, green for connected)
+  Widget _buildConnectionIndicator() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Text(
+          'Status: ',
+          style: TextStyle(fontSize: 24),
+        ),
+        Text(
+          status, // Display connection status text
+          style: const TextStyle(fontSize: 24),
+        ),
+        const SizedBox(width: 10),
+        Icon(
+          Icons.circle,
+          color: status == 'Connected' ? Colors.green : Colors.red, // Green if connected, red if not
+          size: 24,
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -126,10 +149,7 @@ class _ManageClientServerPageState extends State<ManageClientServerPage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: <Widget>[
-              Text(
-                'Connection Status: $status', // Display connection status
-                style: const TextStyle(fontSize: 24),
-              ),
+              _buildConnectionIndicator(), // Show connection indicator with red/green light
               const SizedBox(height: 20),
               TextField(
                 controller: _messageController,
