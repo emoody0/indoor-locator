@@ -3,6 +3,7 @@ import 'config.dart';
 import 'settings.dart';
 import 'view_logs.dart';
 import 'view_alerts.dart';
+import 'mqtt.dart'; // Import the new page
 
 class AdminPortal extends StatelessWidget {
   const AdminPortal({super.key});
@@ -68,6 +69,19 @@ class AdminPortal extends StatelessWidget {
                   context,
                   MaterialPageRoute(
                     builder: (context) => const SettingsPage(),
+                  ),
+                );
+              },
+            ),
+            // New ListTile for managing client and server
+            ListTile(
+              leading: const Icon(Icons.computer),
+              title: const Text('Manage Client/Server'),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const ManageClientServerPage(),
                   ),
                 );
               },

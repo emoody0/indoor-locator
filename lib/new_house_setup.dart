@@ -121,7 +121,7 @@ class _NewHouseSetupPageState extends State<NewHouseSetupPage> {
                   onPressed: () {
                     // Add a new resizable, draggable door to the floor plan
                     setState(() {
-                      floorPlanElements.add(DoorWidget());
+                      floorPlanElements.add(const DoorWidget());
                     });
                   },
                   child: const Text('Add Door'),
@@ -130,7 +130,7 @@ class _NewHouseSetupPageState extends State<NewHouseSetupPage> {
                   onPressed: () {
                     // Add a new resizable, draggable wall to the floor plan
                     setState(() {
-                      floorPlanElements.add(WallWidget());
+                      floorPlanElements.add(const WallWidget());
                     });
                   },
                   child: const Text('Add Wall'),
