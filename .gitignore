@@ -30,7 +30,10 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 /build/
-
+# I'm tired of discarding plugins bruh
+/linux/flutter
+/macos/flutter
+/windows/flutter
 # Symbolication related
 app.*.symbols
 
