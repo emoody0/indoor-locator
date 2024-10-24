@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
 import 'config.dart'; // Import config file
 
-class ManageSpacesPage extends StatefulWidget {
-  const ManageSpacesPage({super.key});
+class ManageHousesPage extends StatefulWidget {
+  const ManageHousesPage({super.key});
 
   @override
-  _ManageSpacesPageState createState() => _ManageSpacesPageState();
+  _ManageHousesPageState createState() => _ManageHousesPageState();
 }
 
-class _ManageSpacesPageState extends State<ManageSpacesPage> {
-  int? selectedSensorIndex; // To hold the currently selected Space
+class _ManageHousesPageState extends State<ManageHousesPage> {
+  int? selectedHouseIndex; // To hold the currently selected house
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Manage Spaces'),
+        title: const Text('Manage Houses'),
         backgroundColor: AppColors.colorScheme.primary, // Use color from config
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
@@ -33,37 +33,30 @@ class _ManageSpacesPageState extends State<ManageSpacesPage> {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 IconButton(
-                  icon: const Icon(Icons.add),
-                  onPressed: () {
-                    // Handle Add User functionality here
-                  },
-                  tooltip: 'Add Space',
+                  icon: const Icon(Icons.edit),
+                  onPressed: selectedHouseIndex != null
+                      ? () {
+                          // Handle Delete House functionality here
+                        }
+                      : null, // Disable if no house is selected
+                  tooltip: 'Edit House',
                 ),
                 IconButton(
                   icon: const Icon(Icons.delete),
-                  onPressed: selectedSensorIndex != null
+                  onPressed: selectedHouseIndex != null
                       ? () {
-                          // Handle Delete Space functionality here
+                          // Handle Delete House functionality here
                         }
-                      : null, // Disable if no Space is selected
-                  tooltip: 'Delete Space',
-                ),
-                IconButton(
-                  icon: const Icon(Icons.swap_horiz), // For moving spaces
-                  onPressed: selectedSensorIndex != null
-                      ? () {
-                          // Handle Move Space functionality here
-                        }
-                      : null, // Disable if no Space is selected
-                  tooltip: 'Move Space',
+                      : null, // Disable if no house is selected
+                  tooltip: 'Delete House',
                 ),
                 IconButton(
                   icon: const Icon(Icons.info), // For viewing details
-                  onPressed: selectedSensorIndex != null
+                  onPressed: selectedHouseIndex != null
                       ? () {
-                          // Handle View Space Details functionality here
+                          // Handle View House Details functionality here
                         }
-                      : null, // Disable if no Space is selected
+                      : null, // Disable if no house is selected
                   tooltip: 'View Details',
                 ),
               ],
@@ -71,26 +64,26 @@ class _ManageSpacesPageState extends State<ManageSpacesPage> {
           ),
           const Divider(), // Divider for visual separation
 
-          // List of Spaces
+          // List of Houses
           Expanded(
             child: ListView.builder(
-              itemCount: 10, // Example count, replace with actual Space count
+              itemCount: 10, // Example count, replace with actual house count
               itemBuilder: (context, index) {
                 return ListTile(
-                  title: Text('Space ${index + 1}'), // Example Space name
+                  title: Text('House ${index + 1}'), // Example house name
                   leading: Radio<int>(
                     value: index,
-                    groupValue: selectedSensorIndex,
+                    groupValue: selectedHouseIndex,
                     onChanged: (value) {
                       setState(() {
-                        selectedSensorIndex = value; // Update selected Space index
+                        selectedHouseIndex = value; // Update selected house index
                       });
                     },
                   ),
                   trailing: IconButton(
                     icon: const Icon(Icons.more_vert),
                     onPressed: () {
-                      // Handle Space options
+                      // Handle house options
                     },
                   ),
                 );

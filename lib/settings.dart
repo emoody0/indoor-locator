@@ -35,22 +35,21 @@ class SettingsPage extends StatelessWidget {
             },
           ),
           ListTile(
-            title: const Text('Manage Spaces'),
-            onTap: () {
-              // Navigate to Manage Spaces Page
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const ManageSpacesPage()),
-              );
-            },
-          ),
-          ListTile(
             title: const Text('Manage Houses'),
             onTap: () {
               // Navigate to Manage Houses Page
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const ManageHousesPage()),
+              );
+            },
+          ),
+          ListTile(
+            title: const Text('New House Setup'),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const NewHouseSetupPage()),
               );
             },
           ),
@@ -63,15 +62,6 @@ class SettingsPage extends StatelessWidget {
                   key: UniqueKey(),
                   isAdmin: true,
                 )),
-              );
-            },
-          ),
-          ListTile(
-            title: const Text('New House Setup'),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const NewHouseSetupPage()),
               );
             },
           ),

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'config.dart'; // Import config file
 import 'configure_alert_windows.dart'; // Import the ConfigureAlertWindowsPage file
 
-
 class DefaultTimeSettingsPage extends StatefulWidget {
   final bool isAdmin; // Parameter to determine if the user is an admin
 
@@ -28,6 +27,45 @@ class _DefaultTimeSettingsPageState extends State<DefaultTimeSettingsPage> {
       }
     }
     return times;
+  }
+
+  // Function to reset the time settings to default
+  void resetToDefaultSettings() {
+    setState(() {
+      // Here you can set the default times and settings
+      monitoringStartTime = "08:00"; // Example default start time
+      monitoringEndTime = "18:00";   // Example default end time
+      reAlertMinutes = 30;           // Example default re-alert time
+    });
+  }
+
+  // Show confirmation dialog
+  void showResetConfirmationDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Revert to Default Settings'),
+          content: const Text(
+              'Are you sure? This will revert your time configuration settings to the settings predefined by your administrator.'),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('No'),
+              onPressed: () {
+                Navigator.of(context).pop(); // Close the dialog
+              },
+            ),
+            TextButton(
+              child: const Text('Yes'),
+              onPressed: () {
+                resetToDefaultSettings(); // Reset the settings
+                Navigator.of(context).pop(); // Close the dialog
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -109,7 +147,6 @@ class _DefaultTimeSettingsPageState extends State<DefaultTimeSettingsPage> {
               const SizedBox(height: 20),
             ],
 
-
             // Re-alert Resident After
             const Text('Re-alert Resident After:'),
             Row(
@@ -133,7 +170,16 @@ class _DefaultTimeSettingsPageState extends State<DefaultTimeSettingsPage> {
               ],
             ),
             const SizedBox(height: 20),
-
+            if (!widget.isAdmin) ...[
+              // Option to revert to default settings
+              ElevatedButton(
+                onPressed: () {
+                  showResetConfirmationDialog(); // Show confirmation dialog
+                },
+                child: const Text('Revert to Default Settings'),
+              ),
+              const SizedBox(height: 20),
+            ],
             // Note about user privacy (for Residents)
             if (!widget.isAdmin) ...[
               const Divider(), // Divider for visual separation

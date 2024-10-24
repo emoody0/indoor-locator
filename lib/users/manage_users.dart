@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'config.dart'; // Import config file
-
+import 'add_user.dart'; // Import the AddUserPage file
+import 'edit_user.dart';
+import 'view_user.dart';
 class ManageUsersPage extends StatefulWidget {
   const ManageUsersPage({super.key});
 
@@ -35,7 +37,13 @@ class _ManageUsersPageState extends State<ManageUsersPage> {
                 IconButton(
                   icon: const Icon(Icons.add),
                   onPressed: () {
-                    // Handle Add User functionality here
+                    // Navigate to AddUserPage when add button is clicked
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const AddUserPage(),
+                      ),
+                    );
                   },
                   tooltip: 'Add User',
                 ),
@@ -49,23 +57,46 @@ class _ManageUsersPageState extends State<ManageUsersPage> {
                   tooltip: 'Delete User',
                 ),
                 IconButton(
-                  icon: const Icon(Icons.swap_horiz), // For moving users
+                  icon: const Icon(Icons.edit),
                   onPressed: selectedUserIndex != null
                       ? () {
-                          // Handle Move User functionality here
+                          // Navigate to EditUserPage with user details
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => EditUserPage(
+                                name: 'User ${selectedUserIndex! + 1}', // Replace with actual user data
+                                email: 'user${selectedUserIndex!}@gmail.com', // Example email
+                                house: 'House 1', // Example house
+                                userType: 'User', // Replace with actual user type
+                              ),
+                            ),
+                          );
                         }
                       : null, // Disable if no user is selected
-                  tooltip: 'Move User',
+                  tooltip: 'Edit User',
                 ),
                 IconButton(
-                  icon: const Icon(Icons.info), // For viewing details
+                  icon: const Icon(Icons.info),
                   onPressed: selectedUserIndex != null
                       ? () {
-                          // Handle View User Details functionality here
+                          // Navigate to ViewUserPage with user details
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ViewUserPage(
+                                name: 'User ${selectedUserIndex! + 1}', // Replace with actual user data
+                                email: 'user${selectedUserIndex!}@gmail.com', // Example email
+                                house: 'House 1', // Example house
+                                userType: 'User', // Replace with actual user type
+                              ),
+                            ),
+                          );
                         }
                       : null, // Disable if no user is selected
                   tooltip: 'View Details',
                 ),
+
               ],
             ),
           ),
