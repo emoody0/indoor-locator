@@ -2,7 +2,7 @@
     THIS FILE IS CURRENTLY UNUSED!!!
 */
 import 'package:flutter/material.dart';
-import 'config.dart'; // Import config file
+import '../config.dart'; // Import config file
 
 class ManageSpacesPage extends StatefulWidget {
   const ManageSpacesPage({super.key});

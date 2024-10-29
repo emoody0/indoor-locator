@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'config.dart'; // Import config file
+import '../config.dart'; // Import config file
 import 'configure_alert_windows.dart'; // Import the ConfigureAlertWindowsPage file
 
 class DefaultTimeSettingsPage extends StatefulWidget {

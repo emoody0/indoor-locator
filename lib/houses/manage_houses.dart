@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'config.dart'; // Import config file
+import '../config.dart'; // Import config file
 
 class ManageHousesPage extends StatefulWidget {
   const ManageHousesPage({super.key});
