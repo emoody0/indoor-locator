@@ -38,20 +38,23 @@ class _EditUserPageState extends State<EditUserPage> {
     selectedHouse = widget.house;
   }
 
-  // Validate the email address to ensure it's a Gmail account
   bool isValidEmail(String email) {
-    return email.endsWith('@gmail.com');
+    final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@gmail\.com$');
+    return emailRegex.hasMatch(email);
   }
 
-  // Show a dialog when trying to navigate back without saving
+  bool isValidName(String name) {
+    final nameRegex = RegExp(r'^[a-zA-Z\s]+$');
+    return name.isNotEmpty && nameRegex.hasMatch(name);
+  }
+
   Future<bool> showUnsavedChangesDialog() async {
     return await showDialog<bool>(
           context: context,
           builder: (BuildContext context) {
             return AlertDialog(
               title: const Text('Unsaved Changes'),
-              content: const Text(
-                  'Are you sure? Your current changes will be lost.'),
+              content: const Text('Are you sure? Your current changes will be lost.'),
               actions: <Widget>[
                 TextButton(
                   child: const Text('No'),
@@ -72,7 +75,6 @@ class _EditUserPageState extends State<EditUserPage> {
         false; // Default to false if dismissed
   }
 
-  // Handle back navigation with unsaved changes check
   Future<bool> _onWillPop() async {
     if (!isSaved && hasChanges) {
       return await showUnsavedChangesDialog();
@@ -80,7 +82,6 @@ class _EditUserPageState extends State<EditUserPage> {
     return true; // Allow navigation if saved or no changes
   }
 
-  // Track changes in user details
   void trackChanges() {
     setState(() {
       hasChanges = userType != widget.userType ||
@@ -90,14 +91,50 @@ class _EditUserPageState extends State<EditUserPage> {
     });
   }
 
+  void _validateAndSave() {
+    final name = nameController.text;
+    final email = emailController.text;
+
+    if (name.isEmpty || email.isEmpty || selectedHouse == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please fill in all fields.'),
+        ),
+      );
+    } else if (!isValidName(name)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Name should only contain alphabetic characters.'),
+        ),
+      );
+    } else if (!isValidEmail(email)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Email must be a valid Gmail account (e.g., user@gmail.com).'),
+        ),
+      );
+    } else {
+      setState(() {
+        isSaved = true; // Mark as saved
+        hasChanges = false; // Reset change tracking
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('User updated successfully!'),
+        ),
+      );
+      Navigator.pop(context); // Go back after saving
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
-      onWillPop: _onWillPop, // Handle unsaved changes on back navigation
+      onWillPop: _onWillPop,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Edit User'),
-          backgroundColor: AppColors.colorScheme.primary, // Use color from config
+          backgroundColor: AppColors.colorScheme.primary,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
             onPressed: () async {
@@ -107,7 +144,7 @@ class _EditUserPageState extends State<EditUserPage> {
             },
           ),
         ),
-        body: Padding(
+        body: SingleChildScrollView( // Add scroll view to prevent overflow
           padding: const EdgeInsets.all(16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -144,30 +181,33 @@ class _EditUserPageState extends State<EditUserPage> {
               ),
               const SizedBox(height: 20),
 
-              // Name input
               TextField(
                 controller: nameController,
                 onChanged: (value) => trackChanges(),
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Name',
-                  border: OutlineInputBorder(),
+                  border: const OutlineInputBorder(),
+                  errorText: isValidName(nameController.text) || nameController.text.isEmpty
+                      ? null
+                      : 'Name should only contain alphabetic characters',
                 ),
               ),
               const SizedBox(height: 20),
 
-              // Email input
               TextField(
                 controller: emailController,
                 onChanged: (value) => trackChanges(),
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Email (must be gmail.com)',
-                  border: OutlineInputBorder(),
+                  border: const OutlineInputBorder(),
+                  errorText: isValidEmail(emailController.text) || emailController.text.isEmpty
+                      ? null
+                      : 'Email must be a valid Gmail account (e.g., user@gmail.com)',
                 ),
                 keyboardType: TextInputType.emailAddress,
               ),
               const SizedBox(height: 20),
 
-              // House dropdown
               const Text(
                 'House',
                 style: TextStyle(fontSize: 18),
@@ -188,43 +228,19 @@ class _EditUserPageState extends State<EditUserPage> {
                   });
                 },
               ),
+              if (selectedHouse == null)
+                const Padding(
+                  padding: EdgeInsets.only(top: 8.0),
+                  child: Text(
+                    'Please select a house',
+                    style: TextStyle(color: Colors.red),
+                  ),
+                ),
               const SizedBox(height: 30),
 
-              // Save button
               Center(
                 child: ElevatedButton(
-                  onPressed: hasChanges
-                      ? () {
-                          if (nameController.text.isEmpty ||
-                              emailController.text.isEmpty ||
-                              selectedHouse == null) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Please fill in all fields.'),
-                              ),
-                            );
-                          } else if (!isValidEmail(emailController.text)) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                    'Email must be a valid Gmail account.'),
-                              ),
-                            );
-                          } else {
-                            // Perform save action
-                            setState(() {
-                              isSaved = true; // Mark as saved
-                              hasChanges = false; // Reset change tracking
-                            });
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('User updated successfully!'),
-                              ),
-                            );
-                            Navigator.pop(context); // Go back after saving
-                          }
-                        }
-                      : null, // Disable button if no changes
+                  onPressed: hasChanges ? _validateAndSave : null,
                   child: const Text('Save'),
                 ),
               ),

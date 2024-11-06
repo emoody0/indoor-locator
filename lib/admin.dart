@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'config.dart';
 import 'settings.dart';
-import '../log_view/view_logs.dart';
-import '../log_view/view_alerts.dart';
-import '../server/mqtt.dart'; // Import the new page
+import '../../log_view/view_logs.dart';
+import '../../log_view/view_alerts.dart';
+import '../../server/mqtt.dart'; // Import the new page
 
 class AdminPortal extends StatelessWidget {
   const AdminPortal({super.key});
