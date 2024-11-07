@@ -1,60 +1,93 @@
 import 'package:flutter/material.dart';
-import '../config.dart';
 import 'room_widget.dart';
+import 'room.dart';
 
 class NewHouseSetupPage extends StatefulWidget {
-  const NewHouseSetupPage({super.key});
+  const NewHouseSetupPage({Key? key}) : super(key: key);
 
   @override
   _NewHouseSetupPageState createState() => _NewHouseSetupPageState();
 }
 
 class _NewHouseSetupPageState extends State<NewHouseSetupPage> {
-  String houseName = 'New House';
-  List<Map<String, dynamic>> roomData = []; // Stores position and size of each room
-  final double snapThreshold = 5.0; // Reduced snap threshold for finer control
+  List<Room> rooms = [];
+  int nextGroupId = 1;
+  final double scaleFactor = 10.0; // 10 pixels per ft
 
-  // Function to handle snapping only if within threshold on drag end
-  void handleRoomMoved(Offset movedPosition, int movedIndex, double newWidth, double newHeight) {
-    final movedRoom = roomData[movedIndex];
-    Offset newPosition = movedPosition;
+  void connectRooms(Room mainRoom, Room targetRoom, String wall, String alignment) {
+    setState(() {
+      // Assign a common group ID if these rooms are being connected
+      if (mainRoom.groupId == null && targetRoom.groupId == null) {
+        mainRoom.groupId = nextGroupId;
+        targetRoom.groupId = nextGroupId;
+        nextGroupId++;
+      } else if (mainRoom.groupId != null) {
+        targetRoom.groupId = mainRoom.groupId;
+      } else {
+        mainRoom.groupId = targetRoom.groupId;
+      }
 
-    for (int i = 0; i < roomData.length; i++) {
-      if (i != movedIndex) {
-        final stationaryRoom = roomData[i];
-        final roomPosition = stationaryRoom['position'];
-        final roomWidth = stationaryRoom['width'];
-        final roomHeight = stationaryRoom['height'];
+      // Calculate new position based on the wall and alignment
+      Offset newPosition;
+      switch (wall) {
+        case 'left':
+          newPosition = Offset(
+            targetRoom.position.dx - mainRoom.width * scaleFactor,  // Attach to left edge
+            targetRoom.position.dy,
+          );
+          break;
+        case 'right':
+          newPosition = Offset(
+            targetRoom.position.dx + targetRoom.width * scaleFactor, // Attach to right edge
+            targetRoom.position.dy,
+          );
+          break;
+        case 'top':
+          newPosition = Offset(
+            targetRoom.position.dx,
+            targetRoom.position.dy - mainRoom.height * scaleFactor,  // Attach to top edge
+          );
+          break;
+        case 'bottom':
+          newPosition = Offset(
+            targetRoom.position.dx,
+            targetRoom.position.dy + targetRoom.height * scaleFactor, // Attach to bottom edge
+          );
+          break;
+        default:
+          return;
+      }
 
-        // Define corners of the moved room
-        Offset movedTopLeft = movedPosition;
-        Offset movedTopRight = Offset(movedPosition.dx + movedRoom['width'], movedPosition.dy);
-        Offset movedBottomLeft = Offset(movedPosition.dx, movedPosition.dy + movedRoom['height']);
-        Offset movedBottomRight = Offset(movedPosition.dx + movedRoom['width'], movedPosition.dy + movedRoom['height']);
-
-        // Define corners of the stationary room
-        Offset roomTopLeft = roomPosition;
-        Offset roomTopRight = Offset(roomPosition.dx + roomWidth, roomPosition.dy);
-        Offset roomBottomLeft = Offset(roomPosition.dx, roomPosition.dy + roomHeight);
-        Offset roomBottomRight = Offset(roomPosition.dx + roomWidth, roomPosition.dy + roomHeight);
-
-        // Check snapping proximity and update newPosition accordingly
-        if ((movedTopLeft - roomTopRight).distance < snapThreshold) {
-          newPosition = Offset(roomTopRight.dx, roomTopRight.dy);
-        } else if ((movedTopRight - roomTopLeft).distance < snapThreshold) {
-          newPosition = Offset(roomTopLeft.dx - movedRoom['width'], roomTopLeft.dy);
-        } else if ((movedBottomLeft - roomBottomRight).distance < snapThreshold) {
-          newPosition = Offset(roomBottomRight.dx, roomBottomRight.dy - movedRoom['height']);
-        } else if ((movedBottomRight - roomBottomLeft).distance < snapThreshold) {
-          newPosition = Offset(roomBottomLeft.dx - movedRoom['width'], roomBottomLeft.dy - movedRoom['height']);
+      // Adjust alignment for finer control, if needed
+      if (alignment == 'bottom' || alignment == 'right') {
+        if (wall == 'left' || wall == 'right') {
+          newPosition = Offset(newPosition.dx, targetRoom.position.dy + targetRoom.height * scaleFactor - mainRoom.height * scaleFactor);
+        } else {
+          newPosition = Offset(targetRoom.position.dx + targetRoom.width * scaleFactor - mainRoom.width * scaleFactor, newPosition.dy);
         }
       }
-    }
 
-    // Only update position if snapping is applied
-    if (newPosition != movedPosition) {
+      // Update mainRoom's position to connect it to targetRoom
+      mainRoom.position = newPosition;
+      mainRoom.connectedRoom = targetRoom;
+      mainRoom.connectedWall = wall;
+      mainRoom.isGrouped = true;
+    });
+  }
+
+
+  void moveGroup(Room room, Offset delta) {
+    // Move all rooms with the same non-null groupId as the dragged room
+    if (room.groupId != null) {
       setState(() {
-        roomData[movedIndex]['position'] = newPosition;
+        for (Room groupedRoom in rooms.where((r) => r.groupId == room.groupId)) {
+          groupedRoom.position += delta;
+        }
+      });
+    } else {
+      // Move only the individual room if it’s not grouped
+      setState(() {
+        room.position += delta;
       });
     }
   }
@@ -62,55 +95,43 @@ class _NewHouseSetupPageState extends State<NewHouseSetupPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(houseName),
-        backgroundColor: AppColors.colorScheme.primary,
-      ),
+      appBar: AppBar(title: const Text('New House Setup')),
       body: Stack(
         children: [
-          // Display each RoomWidget with updated position from roomData
-          ...List.generate(roomData.length, (index) {
-            final room = roomData[index];
+          ...rooms.map((room) {
             return Positioned(
-              left: room['position'].dx,
-              top: room['position'].dy,
+              left: room.position.dx,
+              top: room.position.dy,
               child: RoomWidget(
-                key: UniqueKey(),
-                initialWidth: room['width'],   // Pass initial width
-                initialHeight: room['height'], // Pass initial height
-                onDelete: (key) {
+                room: room,
+                rooms: rooms,
+                onConnect: (targetRoom, wall, alignment) {
+                  connectRooms(room, targetRoom, wall, alignment);
+                },
+                onUngroup: () {
                   setState(() {
-                    roomData.removeAt(index);
+                    room.isGrouped = false;
+                    room.connectedRoom = null;
+                    room.groupId = null; // Reset group ID on ungrouping
                   });
                 },
-                onRoomMoved: (position, width, height) { // Pass position, width, and height
-                  setState(() {
-                    roomData[index]['position'] = position;
-                    roomData[index]['width'] = width;   // Store new width
-                    roomData[index]['height'] = height; // Store new height
-                  });
-                  handleRoomMoved(position, index, width, height);
+                onMove: (delta) {
+                  moveGroup(room, delta);
                 },
               ),
             );
-          }),
+          }).toList(),
           Positioned(
-            bottom: 16,
-            left: 16,
-            right: 16,
-            child: Center(
-              child: ElevatedButton(
-                onPressed: () {
-                  setState(() {
-                    roomData.add({
-                      'position': Offset(50, 100),
-                      'width': 150.0,
-                      'height': 150.0,
-                    });
-                  });
-                },
-                child: const Text('Add Room'),
-              ),
+            bottom: 20,
+            right: 20,
+            child: FloatingActionButton(
+              onPressed: () {
+                setState(() {
+                  // Set the default room size closer to realistic dimensions in feet
+                  rooms.add(Room(position: Offset(50, 50), width: 50.0, height: 50.0));
+                });
+              },
+              child: const Icon(Icons.add),
             ),
           ),
         ],

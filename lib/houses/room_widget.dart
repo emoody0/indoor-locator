@@ -1,56 +1,146 @@
 import 'package:flutter/material.dart';
-import 'dart:math' as math;
-
-enum RoomShape { rectangle, lShape }
+import 'room.dart';
 
 class RoomWidget extends StatefulWidget {
-  final Function(Key) onDelete;
-  final Function(Offset, double, double) onRoomMoved; // Updated to pass position, width, and height
-  final double initialWidth;  // Added for initialization
-  final double initialHeight; // Added for initialization
+  final Room room;
+  final List<Room> rooms;
+  final Function(Room, String, String) onConnect;
+  final VoidCallback onUngroup;
+  final Function(Offset) onMove;
 
   const RoomWidget({
-    super.key,
-    required this.onDelete,
-    required this.onRoomMoved,
-    required this.initialWidth,
-    required this.initialHeight,
-  });
+    Key? key,
+    required this.room,
+    required this.rooms,
+    required this.onConnect,
+    required this.onUngroup,
+    required this.onMove,
+  }) : super(key: key);
 
   @override
   _RoomWidgetState createState() => _RoomWidgetState();
 }
 
 class _RoomWidgetState extends State<RoomWidget> {
-  late double width;
-  late double height;
-  Offset position = const Offset(50, 100);
-  Offset? dragStartOffset; // Store the initial offset when dragging starts
-  bool isLocked = false;
-  double rotationAngle = 0.0;
-  RoomShape shape = RoomShape.rectangle;
-  double lSectionWidth = 75;
-  double lSectionHeight = 50;
-  String roomName = 'Room';
-
-  final TextEditingController _widthController = TextEditingController();
-  final TextEditingController _heightController = TextEditingController();
-  final TextEditingController _lSectionWidthController = TextEditingController();
-  final TextEditingController _lSectionHeightController = TextEditingController();
+  Offset? dragStartOffset;
+  final double scaleFactor = 10.0; // 10 pixels per foot
 
   @override
-  void initState() {
-    super.initState();
-    // Initialize width and height with values from the parent widget
-    width = widget.initialWidth;
-    height = widget.initialHeight;
-    _widthController.text = (width / 10).toString();
-    _heightController.text = (height / 10).toString();
-    _lSectionWidthController.text = (lSectionWidth / 10).toString();
-    _lSectionHeightController.text = (lSectionHeight / 10).toString();
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onPanStart: (details) {
+        dragStartOffset = details.globalPosition - widget.room.position;
+      },
+      onPanUpdate: (details) {
+        setState(() {
+          widget.room.position = details.globalPosition - dragStartOffset!;
+          widget.onMove(details.delta);
+        });
+      },
+      onLongPress: _showContextMenu,
+      child: Container(
+        width: widget.room.width * scaleFactor, // Adjust width based on feet
+        height: widget.room.height * scaleFactor, // Adjust height based on feet
+        color: Colors.blueAccent,
+        child: Center(
+          child: Text(
+            '${widget.room.name}\n${widget.room.width.toInt()} ft x ${widget.room.height.toInt()} ft',
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.white),
+          ),
+        ),
+      ),
+    );
+  }
+
+
+
+   // Add `_showResizeDialog`, `_showEditNameDialog`, and `_showWallAlignmentOptions` methods here
+  void _showContextMenu() {
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext context) {
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.link),
+              title: const Text('Connect to Room'),
+              onTap: () async {
+                Room? targetRoom = await _selectTargetRoom(context);
+                if (targetRoom != null) {
+                  _showWallAlignmentOptions(targetRoom);
+                }
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.aspect_ratio),
+              title: const Text('Resize Room'),
+              onTap: () {
+                Navigator.pop(context);
+                _showResizeDialog();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.edit),
+              title: const Text('Edit Room Name'),
+              onTap: () {
+                Navigator.pop(context);
+                _showEditNameDialog();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.remove_circle_outline),
+              title: const Text('Ungroup'),
+              onTap: () {
+                widget.onUngroup();
+                Navigator.pop(context);
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Add your `_showResizeDialog` and `_showEditNameDialog` methods here
+  void _showEditNameDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        final TextEditingController nameController = TextEditingController(text: widget.room.name);
+        return AlertDialog(
+          title: const Text('Edit Room Name'),
+          content: TextField(
+            controller: nameController,
+            decoration: const InputDecoration(labelText: 'Room Name'),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  widget.room.name = nameController.text;
+                });
+                Navigator.pop(context);
+              },
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _showResizeDialog() {
+    final TextEditingController widthController = TextEditingController(text: widget.room.width.toString());
+    final TextEditingController heightController = TextEditingController(text: widget.room.height.toString());
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -59,32 +149,16 @@ class _RoomWidgetState extends State<RoomWidget> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _buildValidatedInputField(
-                controller: _widthController,
-                labelText: 'Width (ft)',
-                minValue: 1,
-                maxValue: 100,
+              TextField(
+                controller: widthController,
+                decoration: const InputDecoration(labelText: 'Width (ft)'),
+                keyboardType: TextInputType.number,
               ),
-              _buildValidatedInputField(
-                controller: _heightController,
-                labelText: 'Height (ft)',
-                minValue: 1,
-                maxValue: 100,
+              TextField(
+                controller: heightController,
+                decoration: const InputDecoration(labelText: 'Height (ft)'),
+                keyboardType: TextInputType.number,
               ),
-              if (shape == RoomShape.lShape) ...[
-                _buildValidatedInputField(
-                  controller: _lSectionWidthController,
-                  labelText: 'L-Section Width (ft)',
-                  minValue: 1,
-                  maxValue: 100,
-                ),
-                _buildValidatedInputField(
-                  controller: _lSectionHeightController,
-                  labelText: 'L-Section Height (ft)',
-                  minValue: 1,
-                  maxValue: 100,
-                ),
-              ],
             ],
           ),
           actions: [
@@ -96,17 +170,12 @@ class _RoomWidgetState extends State<RoomWidget> {
             ),
             TextButton(
               onPressed: () {
-                if (_validateInputs()) {
-                  setState(() {
-                    width = double.parse(_widthController.text) * 10;
-                    height = double.parse(_heightController.text) * 10;
-                    if (shape == RoomShape.lShape) {
-                      lSectionWidth = double.parse(_lSectionWidthController.text) * 10;
-                      lSectionHeight = double.parse(_lSectionHeightController.text) * 10;
-                    }
-                  });
-                  Navigator.pop(context);
-                }
+                setState(() {
+                  // Update width and height with parsed values and refresh UI
+                  widget.room.width = double.tryParse(widthController.text) ?? widget.room.width;
+                  widget.room.height = double.tryParse(heightController.text) ?? widget.room.height;
+                });
+                Navigator.pop(context);
               },
               child: const Text('OK'),
             ),
@@ -116,218 +185,65 @@ class _RoomWidgetState extends State<RoomWidget> {
     );
   }
 
-  Widget _buildValidatedInputField({
-    required TextEditingController controller,
-    required String labelText,
-    required double minValue,
-    required double maxValue,
-  }) {
-    return TextField(
-      controller: controller,
-      decoration: InputDecoration(
-        labelText: labelText,
-        errorText: _validateField(controller.text, minValue, maxValue),
-      ),
-      keyboardType: TextInputType.numberWithOptions(decimal: true),
-      onChanged: (value) {
-        setState(() {}); // Trigger re-build to update errorText if needed
+
+  void _showWallAlignmentOptions(Room targetRoom) {
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext context) {
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              title: const Text('Attach to Left Wall'),
+              onTap: () {
+                widget.onConnect(targetRoom, 'left', 'top');
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              title: const Text('Attach to Right Wall'),
+              onTap: () {
+                widget.onConnect(targetRoom, 'right', 'top');
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              title: const Text('Attach to Top Wall'),
+              onTap: () {
+                widget.onConnect(targetRoom, 'top', 'left');
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              title: const Text('Attach to Bottom Wall'),
+              onTap: () {
+                widget.onConnect(targetRoom, 'bottom', 'left');
+                Navigator.pop(context);
+              },
+            ),
+          ],
+        );
       },
     );
   }
 
-  String? _validateField(String value, double minValue, double maxValue) {
-    final double? parsedValue = double.tryParse(value);
-    if (parsedValue == null) {
-      return 'Please enter a valid number';
-    } else if (parsedValue < minValue) {
-      return 'Value must be at least $minValue';
-    } else if (parsedValue > maxValue) {
-      return 'Value must be at most $maxValue';
-    }
-    return null;
-  }
-
-  bool _validateInputs() {
-    return _validateField(_widthController.text, 1, 100) == null &&
-           _validateField(_heightController.text, 1, 100) == null &&
-           (shape != RoomShape.lShape ||
-             (_validateField(_lSectionWidthController.text, 1, 100) == null &&
-              _validateField(_lSectionHeightController.text, 1, 100) == null));
-  }
-
-  void _rotateBy90Degrees() {
-    setState(() {
-      rotationAngle = (rotationAngle + math.pi / 2) % (2 * math.pi);
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Positioned(
-      left: position.dx,
-      top: position.dy,
-      child: GestureDetector(
-        onPanStart: (details) {
-          if (!isLocked) {
-            // Set dragStartOffset to the difference between the initial global position and the current widget position
-            dragStartOffset = details.globalPosition - position;
-          }
-        },
-        onPanUpdate: (details) {
-          if (!isLocked) {
-            setState(() {
-              // Use dragStartOffset to calculate the new position accurately, avoiding jumps
-              position = details.globalPosition - dragStartOffset!;
-            });
-          }
-        },
-
-        onPanEnd: (details) {
-          if (!isLocked) {
-            widget.onRoomMoved(position, width, height); // Pass position, width, and height
-          }
-          dragStartOffset = null;
-        },
-        onLongPress: () {
-          showModalBottomSheet(
-            context: context,
-            builder: (BuildContext context) {
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  ListTile(
-                    leading: const Icon(Icons.edit),
-                    title: const Text('Change Room Shape'),
-                    onTap: () {
-                      setState(() {
-                        shape = shape == RoomShape.rectangle
-                            ? RoomShape.lShape
-                            : RoomShape.rectangle;
-                        if (shape == RoomShape.lShape) {
-                          width = 120;
-                          height = 100;
-                          lSectionWidth = 60;
-                          lSectionHeight = 40;
-                        }
-                      });
-                      Navigator.pop(context);
-                    },
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.aspect_ratio),
-                    title: const Text('Resize Room'),
-                    onTap: () {
-                      Navigator.pop(context);
-                      _showResizeDialog();
-                    },
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.rotate_right),
-                    title: const Text('Rotate Room'),
-                    onTap: () {
-                      Navigator.pop(context);
-                      _rotateBy90Degrees();
-                    },
-                  ),
-                  ListTile(
-                    leading: Icon(isLocked ? Icons.lock_open : Icons.lock),
-                    title: Text(isLocked ? 'Unlock' : 'Lock in Place'),
-                    onTap: () {
-                      setState(() {
-                        isLocked = !isLocked;
-                      });
-                      Navigator.pop(context);
-                    },
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.delete),
-                    title: const Text('Delete Room'),
-                    onTap: () {
-                      Navigator.pop(context);
-                      widget.onDelete(widget.key!);
-                    },
-                  ),
-                ],
-              );
-            },
-          );
-        },
-        child: Transform.rotate(
-          angle: rotationAngle,
-          child: _buildRoomShape(),
-        ),
-      ),
+  Future<Room?> _selectTargetRoom(BuildContext context) async {
+    return await showDialog<Room>(
+      context: context,
+      builder: (BuildContext context) {
+        return SimpleDialog(
+          title: const Text('Select Room to Connect'),
+          children: widget.rooms
+              .where((room) => room != widget.room) // Exclude the current room
+              .map((room) => SimpleDialogOption(
+                    onPressed: () => Navigator.pop(context, room),
+                    child: Text(room.name), // Display room name for identification
+                  ))
+              .toList(),
+        );
+      },
     );
   }
 
-  Widget _buildRoomShape() {
-    if (shape == RoomShape.rectangle) {
-      return Container(
-        width: width,
-        height: height,
-        color: Colors.blueAccent,
-        child: _buildRoomContent(),
-      );
-    } else if (shape == RoomShape.lShape) {
-      return ClipPath(
-        clipper: LShapeClipper(width, height, lSectionWidth, lSectionHeight),
-        child: Container(
-          width: width,
-          height: height,
-          color: Colors.blueAccent,
-          child: _buildRoomContent(),
-        ),
-      );
-    }
-    return Container();
-  }
 
-  Widget _buildRoomContent() {
-    double fontSize = math.min(width, height) / 10;
-    return Align(
-      alignment: Alignment.topLeft,
-      child: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Transform.rotate(
-          angle: -rotationAngle,
-          child: Text(
-            '$roomName\n${(width / 10).toStringAsFixed(1)} ft x ${(height / 10).toStringAsFixed(1)} ft',
-            textAlign: TextAlign.left,
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: fontSize,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class LShapeClipper extends CustomClipper<Path> {
-  final double width;
-  final double height;
-  final double lSectionWidth;
-  final double lSectionHeight;
-
-  LShapeClipper(this.width, this.height, this.lSectionWidth, this.lSectionHeight);
-
-  @override
-  Path getClip(Size size) {
-    final path = Path();
-    path.moveTo(0, 0);
-    path.lineTo(width, 0);
-    path.lineTo(width, height - lSectionHeight);
-    path.lineTo(width - lSectionWidth, height - lSectionHeight);
-    path.lineTo(width - lSectionWidth, height);
-    path.lineTo(0, height);
-    path.close();
-    return path;
-  }
-
-  @override
-  bool shouldReclip(covariant CustomClipper<Path> oldClipper) {
-    return true;
-  }
 }
