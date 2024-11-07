@@ -1,4 +1,3 @@
-// room_widget.dart
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 
@@ -6,22 +5,32 @@ enum RoomShape { rectangle, lShape }
 
 class RoomWidget extends StatefulWidget {
   final Function(Key) onDelete;
+  final Function(Offset, double, double) onRoomMoved; // Updated to pass position, width, and height
+  final double initialWidth;  // Added for initialization
+  final double initialHeight; // Added for initialization
 
-  const RoomWidget({super.key, required this.onDelete});
+  const RoomWidget({
+    super.key,
+    required this.onDelete,
+    required this.onRoomMoved,
+    required this.initialWidth,
+    required this.initialHeight,
+  });
 
   @override
   _RoomWidgetState createState() => _RoomWidgetState();
 }
 
 class _RoomWidgetState extends State<RoomWidget> {
-  double width = 150;
-  double height = 150;
+  late double width;
+  late double height;
+  Offset position = const Offset(50, 100);
+  Offset? dragStartOffset; // Store the initial offset when dragging starts
+  bool isLocked = false;
+  double rotationAngle = 0.0;
   RoomShape shape = RoomShape.rectangle;
   double lSectionWidth = 75;
   double lSectionHeight = 50;
-  double rotationAngle = 0.0; // In radians, starting at 0
-  Offset position = const Offset(50, 100);
-  bool isLocked = false;
   String roomName = 'Room';
 
   final TextEditingController _widthController = TextEditingController();
@@ -32,6 +41,9 @@ class _RoomWidgetState extends State<RoomWidget> {
   @override
   void initState() {
     super.initState();
+    // Initialize width and height with values from the parent widget
+    width = widget.initialWidth;
+    height = widget.initialHeight;
     _widthController.text = (width / 10).toString();
     _heightController.text = (height / 10).toString();
     _lSectionWidthController.text = (lSectionWidth / 10).toString();
@@ -136,7 +148,6 @@ class _RoomWidgetState extends State<RoomWidget> {
   }
 
   bool _validateInputs() {
-    // Check all fields and return false if any contain an error
     return _validateField(_widthController.text, 1, 100) == null &&
            _validateField(_heightController.text, 1, 100) == null &&
            (shape != RoomShape.lShape ||
@@ -156,16 +167,27 @@ class _RoomWidgetState extends State<RoomWidget> {
       left: position.dx,
       top: position.dy,
       child: GestureDetector(
-        onPanUpdate: !isLocked
-            ? (details) {
-                setState(() {
-                  position = Offset(
-                    position.dx + details.delta.dx,
-                    position.dy + details.delta.dy,
-                  );
-                });
-              }
-            : null,
+        onPanStart: (details) {
+          if (!isLocked) {
+            // Set dragStartOffset to the difference between the initial global position and the current widget position
+            dragStartOffset = details.globalPosition - position;
+          }
+        },
+        onPanUpdate: (details) {
+          if (!isLocked) {
+            setState(() {
+              // Use dragStartOffset to calculate the new position accurately, avoiding jumps
+              position = details.globalPosition - dragStartOffset!;
+            });
+          }
+        },
+
+        onPanEnd: (details) {
+          if (!isLocked) {
+            widget.onRoomMoved(position, width, height); // Pass position, width, and height
+          }
+          dragStartOffset = null;
+        },
         onLongPress: () {
           showModalBottomSheet(
             context: context,
