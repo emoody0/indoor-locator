@@ -39,12 +39,12 @@ class _RoomWidgetState extends State<RoomWidget> {
       },
       onLongPress: _showContextMenu,
       child: Container(
-        width: widget.room.width * scaleFactor, // Adjust width based on feet
-        height: widget.room.height * scaleFactor, // Adjust height based on feet
+        width: widget.room.width * scaleFactor, 
+        height: widget.room.height * scaleFactor,
         color: Colors.blueAccent,
         child: Center(
           child: Text(
-            '${widget.room.name}\n${widget.room.width.toInt()} ft x ${widget.room.height.toInt()} ft',
+            '${widget.room.name}\n${widget.room.width.toStringAsFixed(1)} ft x ${widget.room.height.toStringAsFixed(1)} ft', // Shows one decimal place
             textAlign: TextAlign.center,
             style: const TextStyle(color: Colors.white),
           ),
@@ -52,6 +52,7 @@ class _RoomWidgetState extends State<RoomWidget> {
       ),
     );
   }
+
 
 
 
@@ -69,7 +70,7 @@ class _RoomWidgetState extends State<RoomWidget> {
               onTap: () async {
                 Room? targetRoom = await _selectTargetRoom(context);
                 if (targetRoom != null) {
-                  _showWallAlignmentOptions(targetRoom);
+                  _showWallSelectionOptions(targetRoom); // Start with wall selection
                 }
               },
             ),
@@ -152,12 +153,12 @@ class _RoomWidgetState extends State<RoomWidget> {
               TextField(
                 controller: widthController,
                 decoration: const InputDecoration(labelText: 'Width (ft)'),
-                keyboardType: TextInputType.number,
+                keyboardType: TextInputType.numberWithOptions(decimal: true), // Allows decimal input
               ),
               TextField(
                 controller: heightController,
                 decoration: const InputDecoration(labelText: 'Height (ft)'),
-                keyboardType: TextInputType.number,
+                keyboardType: TextInputType.numberWithOptions(decimal: true), // Allows decimal input
               ),
             ],
           ),
@@ -171,7 +172,7 @@ class _RoomWidgetState extends State<RoomWidget> {
             TextButton(
               onPressed: () {
                 setState(() {
-                  // Update width and height with parsed values and refresh UI
+                  // Parse as double to retain decimal places
                   widget.room.width = double.tryParse(widthController.text) ?? widget.room.width;
                   widget.room.height = double.tryParse(heightController.text) ?? widget.room.height;
                 });
@@ -186,7 +187,7 @@ class _RoomWidgetState extends State<RoomWidget> {
   }
 
 
-  void _showWallAlignmentOptions(Room targetRoom) {
+  void _showWallSelectionOptions(Room targetRoom) {
     showModalBottomSheet(
       context: context,
       builder: (BuildContext context) {
@@ -196,31 +197,75 @@ class _RoomWidgetState extends State<RoomWidget> {
             ListTile(
               title: const Text('Attach to Left Wall'),
               onTap: () {
-                widget.onConnect(targetRoom, 'left', 'top');
                 Navigator.pop(context);
+                _showAlignmentOptions(targetRoom, 'left');
               },
             ),
             ListTile(
               title: const Text('Attach to Right Wall'),
               onTap: () {
-                widget.onConnect(targetRoom, 'right', 'top');
                 Navigator.pop(context);
+                _showAlignmentOptions(targetRoom, 'right');
               },
             ),
             ListTile(
               title: const Text('Attach to Top Wall'),
               onTap: () {
-                widget.onConnect(targetRoom, 'top', 'left');
                 Navigator.pop(context);
+                _showAlignmentOptions(targetRoom, 'top');
               },
             ),
             ListTile(
               title: const Text('Attach to Bottom Wall'),
               onTap: () {
-                widget.onConnect(targetRoom, 'bottom', 'left');
                 Navigator.pop(context);
+                _showAlignmentOptions(targetRoom, 'bottom');
               },
             ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showAlignmentOptions(Room targetRoom, String wall) {
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext context) {
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (wall == 'left' || wall == 'right') ...[
+              ListTile(
+                title: Text('Align Top of $wall Wall'),
+                onTap: () {
+                  widget.onConnect(targetRoom, wall, 'start'); // Align top
+                  Navigator.pop(context);
+                },
+              ),
+              ListTile(
+                title: Text('Align Bottom of $wall Wall'),
+                onTap: () {
+                  widget.onConnect(targetRoom, wall, 'end'); // Align bottom
+                  Navigator.pop(context);
+                },
+              ),
+            ] else if (wall == 'top' || wall == 'bottom') ...[
+              ListTile(
+                title: Text('Align Left of $wall Wall'),
+                onTap: () {
+                  widget.onConnect(targetRoom, wall, 'start'); // Align left
+                  Navigator.pop(context);
+                },
+              ),
+              ListTile(
+                title: Text('Align Right of $wall Wall'),
+                onTap: () {
+                  widget.onConnect(targetRoom, wall, 'end'); // Align right
+                  Navigator.pop(context);
+                },
+              ),
+            ],
           ],
         );
       },

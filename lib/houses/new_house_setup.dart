@@ -27,53 +27,53 @@ class _NewHouseSetupPageState extends State<NewHouseSetupPage> {
         mainRoom.groupId = targetRoom.groupId;
       }
 
-      // Calculate new position based on the wall and alignment
+      // Calculate new position based on the wall and corner alignment
       Offset newPosition;
       switch (wall) {
         case 'left':
           newPosition = Offset(
             targetRoom.position.dx - mainRoom.width * scaleFactor,  // Attach to left edge
-            targetRoom.position.dy,
+            alignment == 'start'
+                ? targetRoom.position.dy  // Align to top-left corner
+                : targetRoom.position.dy + targetRoom.height * scaleFactor - mainRoom.height * scaleFactor  // Align to bottom-left corner
           );
           break;
         case 'right':
           newPosition = Offset(
             targetRoom.position.dx + targetRoom.width * scaleFactor, // Attach to right edge
-            targetRoom.position.dy,
+            alignment == 'start'
+                ? targetRoom.position.dy  // Align to top-right corner
+                : targetRoom.position.dy + targetRoom.height * scaleFactor - mainRoom.height * scaleFactor  // Align to bottom-right corner
           );
           break;
         case 'top':
           newPosition = Offset(
-            targetRoom.position.dx,
-            targetRoom.position.dy - mainRoom.height * scaleFactor,  // Attach to top edge
+            alignment == 'start'
+                ? targetRoom.position.dx  // Align to top-left corner
+                : targetRoom.position.dx + targetRoom.width * scaleFactor - mainRoom.width * scaleFactor, // Align to top-right corner
+            targetRoom.position.dy - mainRoom.height * scaleFactor  // Attach to top edge
           );
           break;
         case 'bottom':
           newPosition = Offset(
-            targetRoom.position.dx,
-            targetRoom.position.dy + targetRoom.height * scaleFactor, // Attach to bottom edge
+            alignment == 'start'
+                ? targetRoom.position.dx  // Align to bottom-left corner
+                : targetRoom.position.dx + targetRoom.width * scaleFactor - mainRoom.width * scaleFactor, // Align to bottom-right corner
+            targetRoom.position.dy + targetRoom.height * scaleFactor // Attach to bottom edge
           );
           break;
         default:
           return;
       }
 
-      // Adjust alignment for finer control, if needed
-      if (alignment == 'bottom' || alignment == 'right') {
-        if (wall == 'left' || wall == 'right') {
-          newPosition = Offset(newPosition.dx, targetRoom.position.dy + targetRoom.height * scaleFactor - mainRoom.height * scaleFactor);
-        } else {
-          newPosition = Offset(targetRoom.position.dx + targetRoom.width * scaleFactor - mainRoom.width * scaleFactor, newPosition.dy);
-        }
-      }
-
-      // Update mainRoom's position to connect it to targetRoom
+      // Update mainRoom's position to connect it to targetRoom with specified alignment
       mainRoom.position = newPosition;
       mainRoom.connectedRoom = targetRoom;
       mainRoom.connectedWall = wall;
       mainRoom.isGrouped = true;
     });
   }
+
 
 
   void moveGroup(Room room, Offset delta) {
@@ -128,7 +128,7 @@ class _NewHouseSetupPageState extends State<NewHouseSetupPage> {
               onPressed: () {
                 setState(() {
                   // Set the default room size closer to realistic dimensions in feet
-                  rooms.add(Room(position: Offset(50, 50), width: 50.0, height: 50.0));
+                  rooms.add(Room(position: Offset(50, 50), width: 20.0, height: 20.0));
                 });
               },
               child: const Icon(Icons.add),
