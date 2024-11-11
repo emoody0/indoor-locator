@@ -12,11 +12,11 @@ class NewHouseSetupPage extends StatefulWidget {
 class _NewHouseSetupPageState extends State<NewHouseSetupPage> {
   List<Room> rooms = [];
   int nextGroupId = 1;
-  final double scaleFactor = 10.0; // 10 pixels per ft
+  final double scaleFactor = 10.0;
 
   void connectRooms(Room mainRoom, Room targetRoom, String wall, String alignment) {
     setState(() {
-      // Assign a common group ID if these rooms are being connected
+      // Maintain group ID assignment
       if (mainRoom.groupId == null && targetRoom.groupId == null) {
         mainRoom.groupId = nextGroupId;
         targetRoom.groupId = nextGroupId;
@@ -27,46 +27,45 @@ class _NewHouseSetupPageState extends State<NewHouseSetupPage> {
         mainRoom.groupId = targetRoom.groupId;
       }
 
-      // Calculate new position based on the wall and corner alignment
+      // Calculate new position based on wall and alignment
       Offset newPosition;
       switch (wall) {
         case 'left':
           newPosition = Offset(
-            targetRoom.position.dx - mainRoom.width * scaleFactor,  // Attach to left edge
+            targetRoom.position.dx - mainRoom.width * scaleFactor,
             alignment == 'start'
-                ? targetRoom.position.dy  // Align to top-left corner
-                : targetRoom.position.dy + targetRoom.height * scaleFactor - mainRoom.height * scaleFactor  // Align to bottom-left corner
+                ? targetRoom.position.dy
+                : targetRoom.position.dy + targetRoom.height * scaleFactor - mainRoom.height * scaleFactor,
           );
           break;
         case 'right':
           newPosition = Offset(
-            targetRoom.position.dx + targetRoom.width * scaleFactor, // Attach to right edge
+            targetRoom.position.dx + targetRoom.width * scaleFactor,
             alignment == 'start'
-                ? targetRoom.position.dy  // Align to top-right corner
-                : targetRoom.position.dy + targetRoom.height * scaleFactor - mainRoom.height * scaleFactor  // Align to bottom-right corner
+                ? targetRoom.position.dy
+                : targetRoom.position.dy + targetRoom.height * scaleFactor - mainRoom.height * scaleFactor,
           );
           break;
         case 'top':
           newPosition = Offset(
             alignment == 'start'
-                ? targetRoom.position.dx  // Align to top-left corner
-                : targetRoom.position.dx + targetRoom.width * scaleFactor - mainRoom.width * scaleFactor, // Align to top-right corner
-            targetRoom.position.dy - mainRoom.height * scaleFactor  // Attach to top edge
+                ? targetRoom.position.dx
+                : targetRoom.position.dx + targetRoom.width * scaleFactor - mainRoom.width * scaleFactor,
+            targetRoom.position.dy - mainRoom.height * scaleFactor,
           );
           break;
         case 'bottom':
           newPosition = Offset(
             alignment == 'start'
-                ? targetRoom.position.dx  // Align to bottom-left corner
-                : targetRoom.position.dx + targetRoom.width * scaleFactor - mainRoom.width * scaleFactor, // Align to bottom-right corner
-            targetRoom.position.dy + targetRoom.height * scaleFactor // Attach to bottom edge
+                ? targetRoom.position.dx
+                : targetRoom.position.dx + targetRoom.width * scaleFactor - mainRoom.width * scaleFactor,
+            targetRoom.position.dy + targetRoom.height * scaleFactor,
           );
           break;
         default:
           return;
       }
 
-      // Update mainRoom's position to connect it to targetRoom with specified alignment
       mainRoom.position = newPosition;
       mainRoom.connectedRoom = targetRoom;
       mainRoom.connectedWall = wall;
@@ -74,10 +73,18 @@ class _NewHouseSetupPageState extends State<NewHouseSetupPage> {
     });
   }
 
-
+  void deleteRoom(Room room) {
+    setState(() {
+      // Handle grouped rooms on deletion
+      if (room.groupId != null) {
+        // Remove room from the group, preserving group IDs for other rooms
+        room.groupId = null;
+      }
+      rooms.remove(room); // Remove the room from the list
+    });
+  }
 
   void moveGroup(Room room, Offset delta) {
-    // Move all rooms with the same non-null groupId as the dragged room
     if (room.groupId != null) {
       setState(() {
         for (Room groupedRoom in rooms.where((r) => r.groupId == room.groupId)) {
@@ -85,7 +92,6 @@ class _NewHouseSetupPageState extends State<NewHouseSetupPage> {
         }
       });
     } else {
-      // Move only the individual room if it’s not grouped
       setState(() {
         room.position += delta;
       });
@@ -118,6 +124,7 @@ class _NewHouseSetupPageState extends State<NewHouseSetupPage> {
                 onMove: (delta) {
                   moveGroup(room, delta);
                 },
+                onDelete: () => deleteRoom(room), // Pass deleteRoom callback
               ),
             );
           }).toList(),
@@ -127,7 +134,6 @@ class _NewHouseSetupPageState extends State<NewHouseSetupPage> {
             child: FloatingActionButton(
               onPressed: () {
                 setState(() {
-                  // Set the default room size closer to realistic dimensions in feet
                   rooms.add(Room(position: Offset(50, 50), width: 20.0, height: 20.0));
                 });
               },

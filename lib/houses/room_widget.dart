@@ -7,6 +7,7 @@ class RoomWidget extends StatefulWidget {
   final Function(Room, String, String) onConnect;
   final VoidCallback onUngroup;
   final Function(Offset) onMove;
+  final VoidCallback onDelete; // New delete callback
 
   const RoomWidget({
     Key? key,
@@ -15,6 +16,7 @@ class RoomWidget extends StatefulWidget {
     required this.onConnect,
     required this.onUngroup,
     required this.onMove,
+    required this.onDelete, // Pass delete callback
   }) : super(key: key);
 
   @override
@@ -23,7 +25,7 @@ class RoomWidget extends StatefulWidget {
 
 class _RoomWidgetState extends State<RoomWidget> {
   Offset? dragStartOffset;
-  final double scaleFactor = 10.0; // 10 pixels per foot
+  final double scaleFactor = 10.0;
 
   @override
   Widget build(BuildContext context) {
@@ -39,12 +41,12 @@ class _RoomWidgetState extends State<RoomWidget> {
       },
       onLongPress: _showContextMenu,
       child: Container(
-        width: widget.room.width * scaleFactor, 
+        width: widget.room.width * scaleFactor,
         height: widget.room.height * scaleFactor,
         color: Colors.blueAccent,
         child: Center(
           child: Text(
-            '${widget.room.name}\n${widget.room.width.toStringAsFixed(1)} ft x ${widget.room.height.toStringAsFixed(1)} ft', // Shows one decimal place
+            '${widget.room.name}\n${widget.room.width.toStringAsFixed(1)} ft x ${widget.room.height.toStringAsFixed(1)} ft',
             textAlign: TextAlign.center,
             style: const TextStyle(color: Colors.white),
           ),
@@ -53,10 +55,6 @@ class _RoomWidgetState extends State<RoomWidget> {
     );
   }
 
-
-
-
-   // Add `_showResizeDialog`, `_showEditNameDialog`, and `_showWallAlignmentOptions` methods here
   void _showContextMenu() {
     showModalBottomSheet(
       context: context,
@@ -70,7 +68,7 @@ class _RoomWidgetState extends State<RoomWidget> {
               onTap: () async {
                 Room? targetRoom = await _selectTargetRoom(context);
                 if (targetRoom != null) {
-                  _showWallSelectionOptions(targetRoom); // Start with wall selection
+                  _showWallSelectionOptions(targetRoom);
                 }
               },
             ),
@@ -98,13 +96,22 @@ class _RoomWidgetState extends State<RoomWidget> {
                 Navigator.pop(context);
               },
             ),
+            ListTile(
+              leading: const Icon(Icons.delete),
+              title: const Text('Delete Room'),
+              onTap: () {
+                Navigator.pop(context);
+                widget.onDelete(); // Trigger deletion
+              },
+            ),
           ],
         );
       },
     );
   }
 
-  // Add your `_showResizeDialog` and `_showEditNameDialog` methods here
+  // Existing _showEditNameDialog, _showResizeDialog, _showWallSelectionOptions, _showAlignmentOptions, and _selectTargetRoom methods remain unchanged.
+
   void _showEditNameDialog() {
     showDialog(
       context: context,
