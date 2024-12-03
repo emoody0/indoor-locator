@@ -29,6 +29,11 @@ class _RoomWidgetState extends State<RoomWidget> {
 
   @override
   Widget build(BuildContext context) {
+    // Assign a border color based on the room's group ID
+    Color borderColor = widget.room.groupId != null
+        ? Colors.primaries[(widget.room.groupId! % Colors.primaries.length)]
+        : Colors.black;
+
     return GestureDetector(
       onPanStart: (details) {
         dragStartOffset = details.globalPosition - widget.room.position;
@@ -41,14 +46,19 @@ class _RoomWidgetState extends State<RoomWidget> {
       },
       onLongPress: _showContextMenu,
       child: Container(
-        width: widget.room.width * scaleFactor,
-        height: widget.room.height * scaleFactor,
-        color: Colors.blueAccent,
-        child: Center(
-          child: Text(
-            '${widget.room.name}\n${widget.room.width.toStringAsFixed(1)} ft x ${widget.room.height.toStringAsFixed(1)} ft',
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.white),
+        decoration: BoxDecoration(
+          border: Border.all(color: borderColor, width: 2.0), // Add a border
+        ),
+        child: Container(
+          width: widget.room.width * scaleFactor,
+          height: widget.room.height * scaleFactor,
+          color: Colors.blueAccent,
+          child: Center(
+            child: Text(
+              '${widget.room.name}\n${widget.room.width.toStringAsFixed(1)} ft x ${widget.room.height.toStringAsFixed(1)} ft',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white),
+            ),
           ),
         ),
       ),
@@ -193,7 +203,6 @@ class _RoomWidgetState extends State<RoomWidget> {
     );
   }
 
-
   void _showWallSelectionOptions(Room targetRoom) {
     showModalBottomSheet(
       context: context,
@@ -296,6 +305,4 @@ class _RoomWidgetState extends State<RoomWidget> {
       },
     );
   }
-
-
 }
