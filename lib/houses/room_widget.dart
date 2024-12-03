@@ -7,7 +7,7 @@ class RoomWidget extends StatefulWidget {
   final Function(Room, String, String) onConnect;
   final VoidCallback onUngroup;
   final Function(Offset) onMove;
-  final VoidCallback onDelete; // New delete callback
+  final VoidCallback onDelete;
 
   const RoomWidget({
     Key? key,
@@ -16,7 +16,7 @@ class RoomWidget extends StatefulWidget {
     required this.onConnect,
     required this.onUngroup,
     required this.onMove,
-    required this.onDelete, // Pass delete callback
+    required this.onDelete,
   }) : super(key: key);
 
   @override
@@ -47,7 +47,7 @@ class _RoomWidgetState extends State<RoomWidget> {
       onLongPress: _showContextMenu,
       child: Container(
         decoration: BoxDecoration(
-          border: Border.all(color: borderColor, width: 2.0), // Add a border
+          border: Border.all(color: borderColor, width: 2.0),
         ),
         child: Container(
           width: widget.room.width * scaleFactor,
@@ -111,7 +111,7 @@ class _RoomWidgetState extends State<RoomWidget> {
               title: const Text('Delete Room'),
               onTap: () {
                 Navigator.pop(context);
-                widget.onDelete(); // Trigger deletion
+                widget.onDelete();
               },
             ),
           ],
@@ -119,8 +119,6 @@ class _RoomWidgetState extends State<RoomWidget> {
       },
     );
   }
-
-  // Existing _showEditNameDialog, _showResizeDialog, _showWallSelectionOptions, _showAlignmentOptions, and _selectTargetRoom methods remain unchanged.
 
   void _showEditNameDialog() {
     showDialog(
@@ -170,12 +168,12 @@ class _RoomWidgetState extends State<RoomWidget> {
               TextField(
                 controller: widthController,
                 decoration: const InputDecoration(labelText: 'Width (ft)'),
-                keyboardType: TextInputType.numberWithOptions(decimal: true), // Allows decimal input
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
               ),
               TextField(
                 controller: heightController,
                 decoration: const InputDecoration(labelText: 'Height (ft)'),
-                keyboardType: TextInputType.numberWithOptions(decimal: true), // Allows decimal input
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
               ),
             ],
           ),
@@ -189,7 +187,6 @@ class _RoomWidgetState extends State<RoomWidget> {
             TextButton(
               onPressed: () {
                 setState(() {
-                  // Parse as double to retain decimal places
                   widget.room.width = double.tryParse(widthController.text) ?? widget.room.width;
                   widget.room.height = double.tryParse(heightController.text) ?? widget.room.height;
                 });
@@ -255,14 +252,14 @@ class _RoomWidgetState extends State<RoomWidget> {
               ListTile(
                 title: Text('Align Top of $wall Wall'),
                 onTap: () {
-                  widget.onConnect(targetRoom, wall, 'start'); // Align top
+                  widget.onConnect(targetRoom, wall, 'start');
                   Navigator.pop(context);
                 },
               ),
               ListTile(
                 title: Text('Align Bottom of $wall Wall'),
                 onTap: () {
-                  widget.onConnect(targetRoom, wall, 'end'); // Align bottom
+                  widget.onConnect(targetRoom, wall, 'end');
                   Navigator.pop(context);
                 },
               ),
@@ -270,14 +267,14 @@ class _RoomWidgetState extends State<RoomWidget> {
               ListTile(
                 title: Text('Align Left of $wall Wall'),
                 onTap: () {
-                  widget.onConnect(targetRoom, wall, 'start'); // Align left
+                  widget.onConnect(targetRoom, wall, 'start');
                   Navigator.pop(context);
                 },
               ),
               ListTile(
                 title: Text('Align Right of $wall Wall'),
                 onTap: () {
-                  widget.onConnect(targetRoom, wall, 'end'); // Align right
+                  widget.onConnect(targetRoom, wall, 'end');
                   Navigator.pop(context);
                 },
               ),
@@ -295,10 +292,10 @@ class _RoomWidgetState extends State<RoomWidget> {
         return SimpleDialog(
           title: const Text('Select Room to Connect'),
           children: widget.rooms
-              .where((room) => room != widget.room) // Exclude the current room
+              .where((room) => room != widget.room)
               .map((room) => SimpleDialogOption(
                     onPressed: () => Navigator.pop(context, room),
-                    child: Text(room.name), // Display room name for identification
+                    child: Text(room.name),
                   ))
               .toList(),
         );

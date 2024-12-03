@@ -1,3 +1,4 @@
 {
-    "cmake.sourceDirectory": "C:/Users/emoody/Documents/g14_indoor_locator_0.00/g14_indoor_locator/linux"
+    "cmake.sourceDirectory": "C:/Users/emoody/Documents/g14_indoor_locator_0.00/g14_indoor_locator/linux",
+    "java.configuration.updateBuildConfiguration": "interactive"
 }

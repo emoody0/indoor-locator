@@ -6,9 +6,9 @@ class Room {
   double height;
   bool isGrouped;
   Room? connectedRoom;
-  String? connectedWall; // 'left', 'right', 'top', 'bottom'
-  String name; // Room name property
-  int? groupId; // `null` indicates the room is not grouped
+  String? connectedWall;
+  String name;
+  int? groupId;
 
   Room({
     required this.position,
@@ -16,4 +16,29 @@ class Room {
     required this.height,
     this.name = 'Room',
   }) : isGrouped = false;
+
+  Map<String, dynamic> toJson() {
+    return {
+      'position': {'x': position.dx, 'y': position.dy},
+      'width': width,
+      'height': height,
+      'isGrouped': isGrouped,
+      'connectedRoom': connectedRoom?.name,
+      'connectedWall': connectedWall,
+      'name': name,
+      'groupId': groupId,
+    };
+  }
+
+  static Room fromJson(Map<String, dynamic> json) {
+    return Room(
+      position: Offset(json['position']['x'], json['position']['y']),
+      width: json['width'],
+      height: json['height'],
+      name: json['name'],
+    )
+      ..isGrouped = json['isGrouped']
+      ..groupId = json['groupId']
+      ..connectedWall = json['connectedWall'];
+  }
 }

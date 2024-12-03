@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'room_widget.dart';
 import 'room.dart';
+import 'dart:convert'; // For JSON encoding/decoding
 
 class NewHouseSetupPage extends StatefulWidget {
   const NewHouseSetupPage({Key? key}) : super(key: key);
@@ -13,10 +14,10 @@ class _NewHouseSetupPageState extends State<NewHouseSetupPage> {
   List<Room> rooms = [];
   int nextGroupId = 1;
   final double scaleFactor = 10.0;
+  String simulatedDatabase = ""; // Simulated database
 
   void connectRooms(Room mainRoom, Room targetRoom, String wall, String alignment) {
     setState(() {
-      // Maintain group ID assignment
       if (mainRoom.groupId == null && targetRoom.groupId == null) {
         mainRoom.groupId = nextGroupId;
         targetRoom.groupId = nextGroupId;
@@ -27,8 +28,8 @@ class _NewHouseSetupPageState extends State<NewHouseSetupPage> {
         mainRoom.groupId = targetRoom.groupId;
       }
 
-      // Calculate new position based on wall and alignment
       Offset newPosition;
+
       switch (wall) {
         case 'left':
           newPosition = Offset(
@@ -38,6 +39,7 @@ class _NewHouseSetupPageState extends State<NewHouseSetupPage> {
                 : targetRoom.position.dy + targetRoom.height * scaleFactor - mainRoom.height * scaleFactor,
           );
           break;
+
         case 'right':
           newPosition = Offset(
             targetRoom.position.dx + targetRoom.width * scaleFactor,
@@ -46,6 +48,7 @@ class _NewHouseSetupPageState extends State<NewHouseSetupPage> {
                 : targetRoom.position.dy + targetRoom.height * scaleFactor - mainRoom.height * scaleFactor,
           );
           break;
+
         case 'top':
           newPosition = Offset(
             alignment == 'start'
@@ -54,6 +57,7 @@ class _NewHouseSetupPageState extends State<NewHouseSetupPage> {
             targetRoom.position.dy - mainRoom.height * scaleFactor,
           );
           break;
+
         case 'bottom':
           newPosition = Offset(
             alignment == 'start'
@@ -62,8 +66,9 @@ class _NewHouseSetupPageState extends State<NewHouseSetupPage> {
             targetRoom.position.dy + targetRoom.height * scaleFactor,
           );
           break;
+
         default:
-          return;
+          return; // No snapping if wall is invalid
       }
 
       mainRoom.position = newPosition;
@@ -75,12 +80,10 @@ class _NewHouseSetupPageState extends State<NewHouseSetupPage> {
 
   void deleteRoom(Room room) {
     setState(() {
-      // Handle grouped rooms on deletion
       if (room.groupId != null) {
-        // Remove room from the group, preserving group IDs for other rooms
         room.groupId = null;
       }
-      rooms.remove(room); // Remove the room from the list
+      rooms.remove(room);
     });
   }
 
@@ -95,6 +98,24 @@ class _NewHouseSetupPageState extends State<NewHouseSetupPage> {
       setState(() {
         room.position += delta;
       });
+    }
+  }
+
+  void saveHouseToDatabase() {
+    String houseData = jsonEncode(rooms.map((room) => room.toJson()).toList());
+    simulatedDatabase = houseData;
+    print('House saved: $houseData');
+  }
+
+  void loadHouseFromDatabase() {
+    if (simulatedDatabase.isNotEmpty) {
+      List<dynamic> houseData = jsonDecode(simulatedDatabase);
+      setState(() {
+        rooms = houseData.map((data) => Room.fromJson(data)).toList();
+      });
+      print('House loaded: $simulatedDatabase');
+    } else {
+      print('No saved house data found.');
     }
   }
 
@@ -118,13 +139,13 @@ class _NewHouseSetupPageState extends State<NewHouseSetupPage> {
                   setState(() {
                     room.isGrouped = false;
                     room.connectedRoom = null;
-                    room.groupId = null; // Reset group ID on ungrouping
+                    room.groupId = null;
                   });
                 },
                 onMove: (delta) {
                   moveGroup(room, delta);
                 },
-                onDelete: () => deleteRoom(room), // Pass deleteRoom callback
+                onDelete: () => deleteRoom(room),
               ),
             );
           }).toList(),
@@ -134,10 +155,30 @@ class _NewHouseSetupPageState extends State<NewHouseSetupPage> {
             child: FloatingActionButton(
               onPressed: () {
                 setState(() {
-                  rooms.add(Room(position: Offset(50, 50), width: 20.0, height: 20.0));
+                  rooms.add(Room(
+                    position: const Offset(50, 50),
+                    width: 20.0,
+                    height: 20.0,
+                  ));
                 });
               },
               child: const Icon(Icons.add),
+            ),
+          ),
+          Positioned(
+            bottom: 80,
+            right: 20,
+            child: FloatingActionButton(
+              onPressed: saveHouseToDatabase,
+              child: const Icon(Icons.save),
+            ),
+          ),
+          Positioned(
+            bottom: 140,
+            right: 20,
+            child: FloatingActionButton(
+              onPressed: loadHouseFromDatabase,
+              child: const Icon(Icons.download),
             ),
           ),
         ],
