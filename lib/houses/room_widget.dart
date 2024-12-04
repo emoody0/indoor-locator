@@ -141,9 +141,10 @@ class _RoomWidgetState extends State<RoomWidget> {
             TextButton(
               onPressed: () {
                 setState(() {
-                  widget.room.name = nameController.text;
+                  widget.room.name = nameController.text; // Update room name
                 });
                 Navigator.pop(context);
+                _showSnackBar('Room name updated successfully!');
               },
               child: const Text('OK'),
             ),
@@ -151,6 +152,15 @@ class _RoomWidgetState extends State<RoomWidget> {
         );
       },
     );
+  }
+  
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 2),
+      ),
+    ); 
   }
 
   void _showResizeDialog() {
@@ -191,6 +201,7 @@ class _RoomWidgetState extends State<RoomWidget> {
                   widget.room.height = double.tryParse(heightController.text) ?? widget.room.height;
                 });
                 Navigator.pop(context);
+                _showSnackBar('Room resized successfully!');
               },
               child: const Text('OK'),
             ),
@@ -199,6 +210,7 @@ class _RoomWidgetState extends State<RoomWidget> {
       },
     );
   }
+
 
   void _showWallSelectionOptions(Room targetRoom) {
     showModalBottomSheet(
@@ -240,6 +252,7 @@ class _RoomWidgetState extends State<RoomWidget> {
       },
     );
   }
+
 
   void _showAlignmentOptions(Room targetRoom, String wall) {
     showModalBottomSheet(

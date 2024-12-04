@@ -1,20 +1,34 @@
 import 'package:flutter/material.dart';
 import 'room_widget.dart';
 import 'room.dart';
+import 'database_helper.dart';
 import 'dart:convert'; // For JSON encoding/decoding
 
 class NewHouseSetupPage extends StatefulWidget {
-  const NewHouseSetupPage({Key? key}) : super(key: key);
+  final List<Room> rooms;
+
+  const NewHouseSetupPage({
+    Key? key,
+    this.rooms = const [], // Default to an empty list
+  }) : super(key: key);
 
   @override
   _NewHouseSetupPageState createState() => _NewHouseSetupPageState();
 }
 
+
+
 class _NewHouseSetupPageState extends State<NewHouseSetupPage> {
-  List<Room> rooms = [];
+  late List<Room> rooms;
+
+  @override
+  void initState() {
+    super.initState();
+    // Create a modifiable copy of the provided rooms list
+    rooms = List<Room>.from(widget.rooms);
+  }
   int nextGroupId = 1;
   final double scaleFactor = 10.0;
-  String simulatedDatabase = ""; // Simulated database
 
   void connectRooms(Room mainRoom, Room targetRoom, String wall, String alignment) {
     setState(() {
@@ -101,28 +115,126 @@ class _NewHouseSetupPageState extends State<NewHouseSetupPage> {
     }
   }
 
-  void saveHouseToDatabase() {
-    String houseData = jsonEncode(rooms.map((room) => room.toJson()).toList());
-    simulatedDatabase = houseData;
-    print('House saved: $houseData');
+  void saveHouseToDatabase() async {
+    final db = DatabaseHelper();
+
+    String? existingHouseName = rooms.isNotEmpty ? rooms.first.houseName : null;
+
+    if (existingHouseName != null && existingHouseName.isNotEmpty) {
+      print('Updating existing house: $existingHouseName');
+      for (var room in rooms) {
+        room.houseName = existingHouseName; // Ensure houseName is consistent
+        if (room.id == null) {
+          room.id = await db.insertRoom(room);
+          print('Inserted new room with ID: ${room.id}');
+        } else {
+          print('Updating room with ID: ${room.id}');
+          await db.updateRoom(room);
+        }
+      }
+      _showOtherSnackBar('House "$existingHouseName" updated successfully!');
+    } else {
+      // New house logic remains unchanged
+      TextEditingController nameController = TextEditingController();
+
+      await showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text('Save House'),
+            content: TextField(
+              controller: nameController,
+              decoration: const InputDecoration(labelText: 'House Name'),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+                child: const Text('Save'),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (nameController.text.isNotEmpty) {
+        for (var room in rooms) {
+          room.houseName = nameController.text; // Assign house name
+          room.id = await db.insertRoom(room); // Insert and save ID
+          print('Inserted new room with ID: ${room.id}'); // Debug log
+        }
+        _showOtherSnackBar('House "${nameController.text}" saved successfully!');
+      } else {
+        _showOtherSnackBar('House name cannot be empty!');
+      }
+    }
   }
 
-  void loadHouseFromDatabase() {
-    if (simulatedDatabase.isNotEmpty) {
-      List<dynamic> houseData = jsonDecode(simulatedDatabase);
+
+
+
+  
+  // Show confirmation message using Snackbar
+  void _showOtherSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+
+  void loadHouseFromDatabase() async {
+    final db = DatabaseHelper();
+    List<String> houseNames = await db.getDistinctHouseNames();
+
+    // Show dialog to select a house
+    String? selectedHouse = await showDialog<String>(
+      context: context,
+      builder: (BuildContext context) {
+        return SimpleDialog(
+          title: const Text('Select a House to Load'),
+          children: houseNames
+              .map((houseName) => SimpleDialogOption(
+                    onPressed: () {
+                      Navigator.pop(context, houseName);
+                    },
+                    child: Text(houseName),
+                  ))
+              .toList(),
+        );
+      },
+    );
+
+    // Load rooms for the selected house
+    if (selectedHouse != null) {
+      List<Room> loadedRooms = await db.getRoomsByHouseName(selectedHouse);
       setState(() {
-        rooms = houseData.map((data) => Room.fromJson(data)).toList();
+        rooms = loadedRooms;
       });
-      print('House loaded: $simulatedDatabase');
-    } else {
-      print('No saved house data found.');
+      print('Loaded house: $selectedHouse');
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('New House Setup')),
+      appBar: AppBar(
+        title: const Text('New House Setup'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.download),
+            onPressed: loadHouseFromDatabase,
+            tooltip: 'Load House',
+          ),
+        ],
+      ),
       body: Stack(
         children: [
           ...rooms.map((room) {
@@ -171,14 +283,6 @@ class _NewHouseSetupPageState extends State<NewHouseSetupPage> {
             child: FloatingActionButton(
               onPressed: saveHouseToDatabase,
               child: const Icon(Icons.save),
-            ),
-          ),
-          Positioned(
-            bottom: 140,
-            right: 20,
-            child: FloatingActionButton(
-              onPressed: loadHouseFromDatabase,
-              child: const Icon(Icons.download),
             ),
           ),
         ],
