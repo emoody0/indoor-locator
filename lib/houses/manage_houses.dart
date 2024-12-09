@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../config.dart'; // Import config file
 import '../houses/database_helper.dart'; // Import database helper
 import '../houses/new_house_setup.dart'; // Import house setup page
+import 'view_house_page.dart';
+import 'room.dart';
 
 class ManageHousesPage extends StatefulWidget {
   const ManageHousesPage({Key? key}) : super(key: key);
@@ -20,39 +22,6 @@ class _ManageHousesPageState extends State<ManageHousesPage> {
     _loadHouses();
   }
 
-  Future<void> _loadHouses() async {
-    final db = DatabaseHelper();
-    final names = await db.getDistinctHouseNames();
-    print('Loaded house names: $names'); // Debug log
-    setState(() {
-      houseNames = names; // Ensure houseNames is updated
-    });
-  }
-
-
-
-  void _viewHouse(String houseName) async {
-    final db = DatabaseHelper();
-    final houseRooms = await db.getRoomsByHouseName(houseName);
-    print('Loaded rooms for house "$houseName": $houseRooms'); // Debug log
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => NewHouseSetupPage(
-          rooms: houseRooms,
-        ),
-      ),
-    );
-  }
-
-
-
-  Future<void> _deleteHouse(String houseName) async {
-    final db = DatabaseHelper();
-    await db.deleteHouseByName(houseName); // Add this function in DatabaseHelper
-    await _loadHouses(); // Refresh the list after deletion
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -66,15 +35,20 @@ class _ManageHousesPageState extends State<ManageHousesPage> {
           },
         ),
         actions: [
+          // Add the "+" button to create a new house
           IconButton(
-            icon: const Icon(Icons.visibility),
-            onPressed: selectedHouseIndex != null
-                ? () {
-                    final selectedHouseName = houseNames[selectedHouseIndex!];
-                    _viewHouse(selectedHouseName);
-                  }
-                : null, // Disable if no house is selected
-            tooltip: 'View Selected House',
+            icon: const Icon(Icons.add),
+            tooltip: 'Create New House',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => NewHouseSetupPage(
+                    rooms: [], // Start with an empty list of rooms
+                  ),
+                ),
+              ).then((_) => _loadHouses()); // Reload house list after returning
+            },
           ),
         ],
       ),
@@ -100,7 +74,7 @@ class _ManageHousesPageState extends State<ManageHousesPage> {
                                 rooms: rooms,
                               ),
                             ),
-                          );
+                          ).then((_) => _loadHouses()); // Reload house list
                         }
                       : null,
                   tooltip: 'Edit House',
@@ -112,21 +86,40 @@ class _ManageHousesPageState extends State<ManageHousesPage> {
                           final selectedHouseName = houseNames[selectedHouseIndex!];
                           final confirm = await _showDeleteConfirmation(selectedHouseName);
                           if (confirm) {
-                            await _deleteHouse(selectedHouseName);
+                            await _deleteHouse(selectedHouseName); // Call delete function
                           }
                         }
                       : null, // Disable if no house is selected
                   tooltip: 'Delete House',
                 ),
                 IconButton(
-                  icon: const Icon(Icons.info), // For viewing details
+                  icon: const Icon(Icons.info), // Info icon
                   onPressed: selectedHouseIndex != null
                       ? () {
                           final selectedHouseName = houseNames[selectedHouseIndex!];
-                          _showHouseDetails(selectedHouseName);
+                          _showHouseDetails(selectedHouseName); // Display house details
                         }
                       : null, // Disable if no house is selected
                   tooltip: 'View Details',
+                ),
+                IconButton(
+                  icon: const Icon(Icons.visibility),
+                  onPressed: selectedHouseIndex != null
+                      ? () async {
+                          final db = DatabaseHelper(); // Initialize the database helper
+                          final selectedHouseName = houseNames[selectedHouseIndex!]; // Get the selected house name
+                          // Fetch rooms from the database
+                          final List<Room> rooms = await db.getRoomsByHouseName(selectedHouseName); 
+                          // Navigate to the ViewHousePage
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ViewHousePage(rooms: rooms),
+                            ),
+                          );
+                        }
+                      : null, // Disable if no house is selected
+                  tooltip: 'View House',
                 ),
               ],
             ),
@@ -183,17 +176,51 @@ class _ManageHousesPageState extends State<ManageHousesPage> {
           ],
         );
       },
-    ) ??
-        false;
+    ) ?? false;
   }
 
-  void _showHouseDetails(String houseName) {
+  Future<void> _deleteHouse(String houseName) async {
+    final db = DatabaseHelper();
+    await db.deleteHouseByName(houseName); // Delete the house from the database
+    print('Deleted house: $houseName'); // Debug log
+    await _loadHouses(); // Refresh the list of houses
+    _showSnackBar('House "$houseName" deleted successfully!');
+  }
+
+  Future<void> _loadHouses() async {
+    final db = DatabaseHelper();
+    final names = await db.getDistinctHouseNames();
+    setState(() {
+      houseNames = names; // Refresh the list of house names
+      selectedHouseIndex = null; // Clear the selection
+    });
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 2), // Customize duration as needed
+      ),
+    );
+  }
+
+  void _showHouseDetails(String houseName) async {
+    final db = DatabaseHelper();
+    final rooms = await db.getRoomsByHouseName(houseName); // Fetch rooms
+
+    // Prepare the room details in a tidy format
+    String roomDetails = rooms.map((room) {
+      return 'Room: ${room.name}\nDimensions: ${room.width.toStringAsFixed(1)} ft x ${room.height.toStringAsFixed(1)} ft\n';
+    }).join('\n');
+
+    // Show the details in a dialog
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('House Details: $houseName'),
-          content: Text('This is where house details would be displayed.'),
+          title: Text('Details for "$houseName"'),
+          content: Text(roomDetails.isNotEmpty ? roomDetails : 'No rooms found.'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),

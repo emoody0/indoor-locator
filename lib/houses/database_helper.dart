@@ -59,13 +59,15 @@ class DatabaseHelper {
 
   Future<void> deleteHouseByName(String houseName) async {
     final db = await database;
+    print('Deleting house: $houseName'); // Debug log
     await db.delete(
       'rooms',
-      where: 'name = ?',
+      where: 'houseName = ?',
       whereArgs: [houseName],
     );
   }
 
+  
 
 
   Future<int> updateRoom(Room room) async {
@@ -104,13 +106,14 @@ class DatabaseHelper {
 
   Future<List<Room>> getRoomsByHouseName(String houseName) async {
     final db = await database;
-    final List<Map<String, dynamic>> maps = await db.query(
+    final List<Map<String, dynamic>> results = await db.query(
       'rooms',
       where: 'houseName = ?',
       whereArgs: [houseName],
     );
-    return List.generate(maps.length, (i) => Room.fromJson(maps[i]));
+    return results.map((json) => Room.fromJson(json)).toList();
   }
+
 
 
 }

@@ -44,6 +44,7 @@ class SettingsPage extends StatelessWidget {
               );
             },
           ),
+          /*
           ListTile(
             title: const Text('New House Setup'),
             onTap: () {
@@ -53,6 +54,7 @@ class SettingsPage extends StatelessWidget {
               );
             },
           ),
+          */ // removed and moved to manage_houses.dart
           ListTile(
             title: const Text('Set Default Time Windows'),
             onTap: () {

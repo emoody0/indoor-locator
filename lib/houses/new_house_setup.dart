@@ -265,6 +265,7 @@ class _NewHouseSetupPageState extends State<NewHouseSetupPage> {
             bottom: 20,
             right: 20,
             child: FloatingActionButton(
+              heroTag: null,
               onPressed: () {
                 setState(() {
                   rooms.add(Room(
@@ -274,6 +275,7 @@ class _NewHouseSetupPageState extends State<NewHouseSetupPage> {
                   ));
                 });
               },
+              tooltip: 'Add Room',
               child: const Icon(Icons.add),
             ),
           ),
@@ -281,7 +283,9 @@ class _NewHouseSetupPageState extends State<NewHouseSetupPage> {
             bottom: 80,
             right: 20,
             child: FloatingActionButton(
+              heroTag: null,
               onPressed: saveHouseToDatabase,
+              tooltip: 'Save House',
               child: const Icon(Icons.save),
             ),
           ),
