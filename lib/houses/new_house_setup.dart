@@ -6,29 +6,32 @@ import 'dart:convert'; // For JSON encoding/decoding
 
 class NewHouseSetupPage extends StatefulWidget {
   final List<Room> rooms;
+  final String? houseName; // Optional house name for dynamic title
 
   const NewHouseSetupPage({
     Key? key,
     this.rooms = const [], // Default to an empty list
+    this.houseName, // Pass house name if editing an existing house
   }) : super(key: key);
 
   @override
   _NewHouseSetupPageState createState() => _NewHouseSetupPageState();
 }
 
-
-
 class _NewHouseSetupPageState extends State<NewHouseSetupPage> {
   late List<Room> rooms;
+  late String title; // Dynamic title for AppBar
+  int nextGroupId = 1;
+  final double scaleFactor = 10.0;
 
   @override
   void initState() {
     super.initState();
     // Create a modifiable copy of the provided rooms list
     rooms = List<Room>.from(widget.rooms);
+    // Initialize title
+    title = widget.houseName ?? 'New House Setup'; // Use the house name if provided, otherwise default
   }
-  int nextGroupId = 1;
-  final double scaleFactor = 10.0;
 
   void connectRooms(Room mainRoom, Room targetRoom, String wall, String alignment) {
     setState(() {
@@ -132,9 +135,9 @@ class _NewHouseSetupPageState extends State<NewHouseSetupPage> {
           await db.updateRoom(room);
         }
       }
-      _showOtherSnackBar('House "$existingHouseName" updated successfully!');
+      _showSnackBar('House "$existingHouseName" updated successfully!');
     } else {
-      // New house logic remains unchanged
+      // Prompt for a new house name
       TextEditingController nameController = TextEditingController();
 
       await showDialog(
@@ -152,9 +155,7 @@ class _NewHouseSetupPageState extends State<NewHouseSetupPage> {
                 child: const Text('Cancel'),
               ),
               TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                },
+                onPressed: () => Navigator.pop(context),
                 child: const Text('Save'),
               ),
             ],
@@ -163,24 +164,23 @@ class _NewHouseSetupPageState extends State<NewHouseSetupPage> {
       );
 
       if (nameController.text.isNotEmpty) {
+        setState(() {
+          title = nameController.text; // Update title to reflect the saved house name
+        });
+
         for (var room in rooms) {
           room.houseName = nameController.text; // Assign house name
           room.id = await db.insertRoom(room); // Insert and save ID
           print('Inserted new room with ID: ${room.id}'); // Debug log
         }
-        _showOtherSnackBar('House "${nameController.text}" saved successfully!');
+        _showSnackBar('House "${nameController.text}" saved successfully!');
       } else {
-        _showOtherSnackBar('House name cannot be empty!');
+        _showSnackBar('House name cannot be empty!');
       }
     }
   }
 
-
-
-
-  
-  // Show confirmation message using Snackbar
-  void _showOtherSnackBar(String message) {
+  void _showSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
@@ -188,7 +188,6 @@ class _NewHouseSetupPageState extends State<NewHouseSetupPage> {
       ),
     );
   }
-
 
   void loadHouseFromDatabase() async {
     final db = DatabaseHelper();
@@ -226,7 +225,7 @@ class _NewHouseSetupPageState extends State<NewHouseSetupPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('New House Setup'),
+        title: Text(title), // Dynamic title
         actions: [
           IconButton(
             icon: const Icon(Icons.download),

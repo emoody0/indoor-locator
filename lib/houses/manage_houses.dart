@@ -72,6 +72,7 @@ class _ManageHousesPageState extends State<ManageHousesPage> {
                             MaterialPageRoute(
                               builder: (context) => NewHouseSetupPage(
                                 rooms: rooms,
+                                houseName: selectedHouseName,
                               ),
                             ),
                           ).then((_) => _loadHouses()); // Reload house list
