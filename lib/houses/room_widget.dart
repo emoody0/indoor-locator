@@ -10,14 +10,14 @@ class RoomWidget extends StatefulWidget {
   final VoidCallback onDelete;
 
   const RoomWidget({
-    Key? key,
+    super.key,
     required this.room,
     required this.rooms,
     required this.onConnect,
     required this.onUngroup,
     required this.onMove,
     required this.onDelete,
-  }) : super(key: key);
+  });
 
   @override
   _RoomWidgetState createState() => _RoomWidgetState();

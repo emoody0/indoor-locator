@@ -6,7 +6,7 @@ import 'view_house_page.dart';
 import 'room.dart';
 
 class ManageHousesPage extends StatefulWidget {
-  const ManageHousesPage({Key? key}) : super(key: key);
+  const ManageHousesPage({super.key});
 
   @override
   _ManageHousesPageState createState() => _ManageHousesPageState();
@@ -43,7 +43,7 @@ class _ManageHousesPageState extends State<ManageHousesPage> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => NewHouseSetupPage(
+                  builder: (context) => const NewHouseSetupPage(
                     rooms: [], // Start with an empty list of rooms
                   ),
                 ),

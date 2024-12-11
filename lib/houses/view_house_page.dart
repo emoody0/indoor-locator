@@ -4,7 +4,7 @@ import 'room.dart';
 class ViewHousePage extends StatelessWidget {
   final List<Room> rooms;
 
-  const ViewHousePage({Key? key, required this.rooms}) : super(key: key);
+  const ViewHousePage({super.key, required this.rooms});
 
   @override
   Widget build(BuildContext context) {
@@ -40,7 +40,7 @@ class ViewHousePage extends StatelessWidget {
                 ),
               ),
             );
-          }).toList(),
+          }),
         ],
       ),
     );

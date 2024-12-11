@@ -72,7 +72,9 @@ class _DefaultTimeSettingsPageState extends State<DefaultTimeSettingsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Configure Default Time Settings'),
+        title: Text(widget.isAdmin
+            ? 'Configure Default Time Windows'
+            : 'Configure Time Windows'),
         backgroundColor: AppColors.colorScheme.primary,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),

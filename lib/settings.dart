@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:g14_indoor_locator/houses/manage_houses.dart';
-import 'package:g14_indoor_locator/houses/manage_spaces.dart';
 import 'package:g14_indoor_locator/users/manage_users.dart';
 import 'config.dart'; // Import config file
 import '../time_windows/default_time_settings.dart'; // Import Default Time Settings Page
-import '../houses/new_house_setup.dart'; // Import New House Setup Page
+// Import New House Setup Page
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
