@@ -44,9 +44,19 @@ class DatabaseHelper {
 
   Future<void> _migrateDatabase(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
-      await db.execute('ALTER TABLE rooms ADD COLUMN houseName TEXT');
+      // Check if the 'houseName' column already exists
+      final tableInfo = await db.rawQuery("PRAGMA table_info(rooms)");
+      final columnExists = tableInfo.any((column) => column['name'] == 'houseName');
+
+      if (!columnExists) {
+        await db.execute('ALTER TABLE rooms ADD COLUMN houseName TEXT');
+        print('Added column houseName to rooms table');
+      } else {
+        print('Column houseName already exists in rooms table');
+      }
     }
   }
+
 
   Future<int> insertRoom(Room room) async {
     final db = await database;
