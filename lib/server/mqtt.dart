@@ -163,6 +163,29 @@ void publishMessage(String topic, Map<String, dynamic> messageData) {
      publishMessage('Alerts', alertData);
   }
 
+  // Build connection status indicator (red for disconnected, green for connected)
+  Widget _buildConnectionIndicator() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Text(
+          'Status: ',
+          style: TextStyle(fontSize: 24),
+        ),
+        Text(
+          status, // Display connection status text
+          style: const TextStyle(fontSize: 24),
+        ),
+        const SizedBox(width: 10),
+        Icon(
+          Icons.circle,
+          color: status == 'Connected' ? Colors.green : Colors.red, // Green if connected, red if not
+          size: 24,
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(

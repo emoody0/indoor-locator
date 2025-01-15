@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'config.dart';
-import 'default_time_settings.dart';
-import 'view_logs.dart';
-import 'view_alerts.dart';
+import '../time_windows/default_time_settings.dart';
+import '../log_view/view_logs.dart';
+import '../log_view/view_alerts.dart';
 
 class ResidentPortal extends StatelessWidget {
   const ResidentPortal({super.key});

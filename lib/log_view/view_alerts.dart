@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'config.dart';
+import '../config.dart';
 
 class ViewAlertsPage extends StatefulWidget {
   final bool isAdmin;

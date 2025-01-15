@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:g14_indoor_locator/manage_houses.dart';
-import 'package:g14_indoor_locator/manage_spaces.dart';
-import 'package:g14_indoor_locator/manage_users.dart';
+import 'package:g14_indoor_locator/houses/manage_houses.dart';
+import 'package:g14_indoor_locator/users/manage_users.dart';
 import 'config.dart'; // Import config file
-import 'default_time_settings.dart'; // Import Default Time Settings Page
-import 'new_house_setup.dart'; // Import New House Setup Page
+import '../time_windows/default_time_settings.dart'; // Import Default Time Settings Page
+// Import New House Setup Page
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -35,16 +34,6 @@ class SettingsPage extends StatelessWidget {
             },
           ),
           ListTile(
-            title: const Text('Manage Spaces'),
-            onTap: () {
-              // Navigate to Manage Spaces Page
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const ManageSpacesPage()),
-              );
-            },
-          ),
-          ListTile(
             title: const Text('Manage Houses'),
             onTap: () {
               // Navigate to Manage Houses Page
@@ -54,6 +43,17 @@ class SettingsPage extends StatelessWidget {
               );
             },
           ),
+          /*
+          ListTile(
+            title: const Text('New House Setup'),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const NewHouseSetupPage()),
+              );
+            },
+          ),
+          */ // removed and moved to manage_houses.dart
           ListTile(
             title: const Text('Set Default Time Windows'),
             onTap: () {
@@ -63,15 +63,6 @@ class SettingsPage extends StatelessWidget {
                   key: UniqueKey(),
                   isAdmin: true,
                 )),
-              );
-            },
-          ),
-          ListTile(
-            title: const Text('New House Setup'),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const NewHouseSetupPage()),
               );
             },
           ),
