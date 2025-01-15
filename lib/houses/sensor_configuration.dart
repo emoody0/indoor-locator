@@ -11,48 +11,199 @@ class SensorConfigurationPage extends StatefulWidget {
   _SensorConfigurationPageState createState() => _SensorConfigurationPageState();
 }
 
-class _SensorConfigurationPageState extends State<SensorConfigurationPage> {
+class _SensorConfigurationPageState extends State<SensorConfigurationPage>
+    with SingleTickerProviderStateMixin {
   Room? selectedRoom;
+  Sensor? selectedSensor;
   final TextEditingController nameController = TextEditingController();
+  final TextEditingController distanceFeetController = TextEditingController();
+  final TextEditingController distanceInchesController = TextEditingController();
   String? selectedWall;
-  int distanceFeet = 0;
-  int distanceInches = 0;
+  late TabController _tabController;
 
-  Widget _buildSensorIcons(Room room) {
-    return Stack(
-      children: room.sensors.map((sensor) {
-        double iconOffsetX;
-        double iconOffsetY;
-        switch (sensor.wall) {
-          case 'Top':
-            iconOffsetX = room.position.dx + (sensor.distanceFromWall * 10.0);
-            iconOffsetY = room.position.dy + 2; // Close to top wall
-            break;
-          case 'Bottom':
-            iconOffsetX = room.position.dx + (sensor.distanceFromWall * 10.0);
-            iconOffsetY = room.position.dy + (room.height * 10.0) - 18; // Close to bottom wall
-            break;
-          case 'Left':
-            iconOffsetX = room.position.dx + 2; // Close to left wall
-            iconOffsetY = room.position.dy + (sensor.distanceFromWall * 10.0);
-            break;
-          case 'Right':
-            iconOffsetX = room.position.dx + (room.width * 10.0) - 18; // Close to right wall
-            iconOffsetY = room.position.dy + (sensor.distanceFromWall * 10.0);
-            break;
-          default:
-            iconOffsetX = room.position.dx;
-            iconOffsetY = room.position.dy;
-        }
-        return Positioned(
-          left: iconOffsetX,
-          top: iconOffsetY,
-          child: const Icon(
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  void _resetInputs() {
+    nameController.clear();
+    distanceFeetController.clear();
+    distanceInchesController.clear();
+    selectedWall = null;
+  }
+
+  void _navigateToEditSensorPage(Sensor sensor, Room room) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EditSensorPage(
+          sensor: sensor,
+          room: room,
+          onUpdate: (updatedSensor) {
+            setState(() {
+              final index = room.sensors.indexOf(sensor);
+              if (index != -1) {
+                room.sensors[index] = updatedSensor;
+              }
+            });
+          },
+          onDelete: () {
+            setState(() {
+              room.sensors.remove(sensor);
+            });
+            Navigator.pop(context);
+          },
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _buildSensorIcons(Room room) {
+    return room.sensors.map((sensor) {
+      double iconOffsetX;
+      double iconOffsetY;
+
+      // Adjust scaling factors for consistent placement
+      final maxHorizontalDistance = room.width * 10.0;
+      final maxVerticalDistance = room.height * 10.0;
+
+      switch (sensor.wall) {
+        case 'Top':
+          iconOffsetX = room.position.dx + (sensor.distanceFromWall / room.width) * maxHorizontalDistance;
+          iconOffsetY = room.position.dy + 2;
+          break;
+        case 'Bottom':
+          iconOffsetX = room.position.dx + (sensor.distanceFromWall / room.width) * maxHorizontalDistance;
+          iconOffsetY = room.position.dy + maxVerticalDistance - 18;
+          break;
+        case 'Left':
+          iconOffsetX = room.position.dx + 2;
+          iconOffsetY = room.position.dy + (sensor.distanceFromWall / room.height) * maxVerticalDistance;
+          break;
+        case 'Right':
+          iconOffsetX = room.position.dx + maxHorizontalDistance - 18;
+          iconOffsetY = room.position.dy + (sensor.distanceFromWall / room.height) * maxVerticalDistance;
+          break;
+        default:
+          iconOffsetX = room.position.dx;
+          iconOffsetY = room.position.dy;
+      }
+
+      // Clamp the offsets to ensure they stay within room boundaries
+      return Positioned(
+        left: iconOffsetX.clamp(room.position.dx, room.position.dx + maxHorizontalDistance - 16),
+        top: iconOffsetY.clamp(room.position.dy, room.position.dy + maxVerticalDistance - 16),
+        child: GestureDetector(
+          onTap: () {
+            setState(() {
+              selectedSensor = sensor;
+              selectedRoom = room;
+              _navigateToEditSensorPage(sensor, room);
+            });
+          },
+          child: Icon(
             Icons.sensors,
             size: 16,
-            color: Colors.red,
+            color: selectedSensor == sensor ? Colors.blue : Colors.red,
           ),
-        );
+        ),
+      );
+    }).toList();
+  }
+
+  Widget _buildAddSensorTab() {
+    return Column(
+      children: [
+        if (selectedRoom != null) ...[
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: TextField(
+              controller: nameController,
+              decoration: const InputDecoration(labelText: 'Sensor Name'),
+            ),
+          ),
+          DropdownButton<String>(
+            value: selectedWall,
+            hint: const Text('Select Wall'),
+            items: ['Top', 'Bottom', 'Left', 'Right']
+                .map((wall) => DropdownMenuItem(
+                      value: wall,
+                      child: Text(wall),
+                    ))
+                .toList(),
+            onChanged: (value) {
+              setState(() {
+                selectedWall = value;
+              });
+            },
+          ),
+          Row(
+            children: [
+              Flexible(
+                child: TextField(
+                  controller: distanceFeetController,
+                  decoration: const InputDecoration(labelText: 'Distance (ft)'),
+                  keyboardType: TextInputType.number,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Flexible(
+                child: TextField(
+                  controller: distanceInchesController,
+                  decoration: const InputDecoration(labelText: 'Distance (in)'),
+                  keyboardType: TextInputType.number,
+                ),
+              ),
+            ],
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (selectedRoom != null &&
+                  selectedWall != null &&
+                  nameController.text.isNotEmpty) {
+                setState(() {
+                  selectedRoom!.sensors.add(Sensor(
+                    name: nameController.text,
+                    wall: selectedWall!,
+                    distanceFromWall: (int.tryParse(distanceFeetController.text) ?? 0) +
+                        ((int.tryParse(distanceInchesController.text) ?? 0) / 12),
+                  ));
+                  _resetInputs();
+                });
+              }
+            },
+            child: const Text('Add Sensor'),
+          ),
+        ] else ...[
+          const Padding(
+            padding: EdgeInsets.all(16.0),
+            child: Text('Please select a room to add sensors.',
+                style: TextStyle(fontSize: 16, color: Colors.grey)),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildManageSensorsTab() {
+    return ListView(
+      children: widget.rooms.expand((room) {
+        return room.sensors.map((sensor) {
+          return ListTile(
+            title: Text(sensor.name),
+            subtitle: Text('${sensor.wall} wall, ${sensor.distanceFromWall.toStringAsFixed(2)} ft in room: ${room.name}'),
+            tileColor: selectedSensor == sensor ? Colors.blue.withOpacity(0.2) : null,
+            onTap: () {
+              setState(() {
+                selectedSensor = sensor;
+                selectedRoom = room;
+                _navigateToEditSensorPage(sensor, room);
+              });
+            },
+          );
+        }).toList();
       }).toList(),
     );
   }
@@ -66,53 +217,102 @@ class _SensorConfigurationPageState extends State<SensorConfigurationPage> {
       body: Column(
         children: [
           Expanded(
+            flex: 2,
             child: Stack(
-              children: widget.rooms.map((room) {
-                return Stack(
-                  children: [
-                    Positioned(
-                      left: room.position.dx,
-                      top: room.position.dy,
-                      child: GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            selectedRoom = room;
-                          });
-                        },
-                        child: Container(
-                          width: room.width * 10.0, // Scale to fit the screen
-                          height: room.height * 10.0,
-                          decoration: BoxDecoration(
-                            color: selectedRoom == room
-                                ? Colors.blueAccent.withOpacity(0.5)
-                                : Colors.grey.withOpacity(0.5),
-                            border: Border.all(color: Colors.black, width: 2),
-                          ),
-                          child: Center(
-                            child: Text(
-                              room.name,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(color: Colors.black),
-                            ),
+              children: [
+                ...widget.rooms.map((room) {
+                  return Positioned(
+                    left: room.position.dx,
+                    top: room.position.dy,
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          selectedRoom = room;
+                        });
+                      },
+                      child: Container(
+                        width: room.width * 10.0,
+                        height: room.height * 10.0,
+                        decoration: BoxDecoration(
+                          color: selectedRoom == room
+                              ? Colors.blueAccent.withOpacity(0.5)
+                              : Colors.grey.withOpacity(0.5),
+                          border: Border.all(color: Colors.black, width: 2),
+                        ),
+                        child: Center(
+                          child: Text(
+                            room.name,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(color: Colors.black),
                           ),
                         ),
                       ),
                     ),
-                    _buildSensorIcons(room),
-                  ],
-                );
-              }).toList(),
+                  );
+                }),
+                ...widget.rooms.expand((room) => _buildSensorIcons(room)),
+              ],
             ),
           ),
-          if (selectedRoom != null) ...[
-            const Divider(),
-            const Text('Add Sensor', style: TextStyle(fontSize: 20)),
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: TextField(
-                controller: nameController,
-                decoration: const InputDecoration(labelText: 'Sensor Name'),
-              ),
+          TabBar(
+            controller: _tabController,
+            tabs: const [
+              Tab(text: 'Add Sensor'),
+              Tab(text: 'Manage Sensors'),
+            ],
+          ),
+          Expanded(
+            flex: 3,
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildAddSensorTab(),
+                _buildManageSensorsTab(),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class EditSensorPage extends StatelessWidget {
+  final Sensor sensor;
+  final Room room;
+  final Function(Sensor) onUpdate;
+  final VoidCallback onDelete;
+
+  const EditSensorPage({
+    super.key,
+    required this.sensor,
+    required this.room,
+    required this.onUpdate,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final nameController = TextEditingController(text: sensor.name);
+    final distanceFeetController = TextEditingController(
+        text: sensor.distanceFromWall.floor().toString());
+    final distanceInchesController = TextEditingController(
+        text: ((sensor.distanceFromWall - sensor.distanceFromWall.floor()) * 12)
+            .round()
+            .toString());
+    String selectedWall = sensor.wall;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Edit Sensor in ${room.name}'),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            TextField(
+              controller: nameController,
+              decoration: const InputDecoration(labelText: 'Sensor Name'),
             ),
             DropdownButton<String>(
               value: selectedWall,
@@ -124,73 +324,57 @@ class _SensorConfigurationPageState extends State<SensorConfigurationPage> {
                       ))
                   .toList(),
               onChanged: (value) {
-                setState(() {
+                if (value != null) {
                   selectedWall = value;
-                });
+                }
               },
             ),
             Row(
               children: [
                 Flexible(
                   child: TextField(
-                    decoration: const InputDecoration(labelText: 'Distance (ft)'),
+                    controller: distanceFeetController,
+                    decoration:
+                        const InputDecoration(labelText: 'Distance (ft)'),
                     keyboardType: TextInputType.number,
-                    onChanged: (value) {
-                      setState(() {
-                        distanceFeet = int.tryParse(value) ?? 0;
-                      });
-                    },
                   ),
                 ),
                 const SizedBox(width: 10),
                 Flexible(
                   child: TextField(
-                    decoration: const InputDecoration(labelText: 'Distance (in)'),
+                    controller: distanceInchesController,
+                    decoration:
+                        const InputDecoration(labelText: 'Distance (in)'),
                     keyboardType: TextInputType.number,
-                    onChanged: (value) {
-                      setState(() {
-                        distanceInches = int.tryParse(value) ?? 0;
-                      });
-                    },
                   ),
                 ),
               ],
             ),
-            ElevatedButton(
-              onPressed: () {
-                if (selectedRoom != null &&
-                    selectedWall != null &&
-                    nameController.text.isNotEmpty) {
-                  if (selectedRoom!.sensors.length < 4) {
-                    setState(() {
-                      selectedRoom!.sensors.add(Sensor(
-                        name: nameController.text,
-                        wall: selectedWall!,
-                        distanceFromWall:
-                            distanceFeet + (distanceInches / 12),
-                      ));
-                      nameController.clear();
-                      selectedWall = null;
-                      distanceFeet = 0;
-                      distanceInches = 0;
-                    });
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                          content:
-                              Text('Each room can have up to 4 sensors.')),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                ElevatedButton(
+                  onPressed: () {
+                    final updatedSensor = Sensor(
+                      name: nameController.text,
+                      wall: selectedWall,
+                      distanceFromWall: double.parse(distanceFeetController.text) +
+                          (double.parse(distanceInchesController.text) / 12),
                     );
-                  }
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Fill in all fields.')),
-                  );
-                }
-              },
-              child: const Text('Add Sensor'),
+                    onUpdate(updatedSensor);
+                    Navigator.pop(context);
+                  },
+                  child: const Text('Update Sensor'),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                  onPressed: onDelete,
+                  child: const Text('Delete Sensor'),
+                ),
+              ],
             ),
           ],
-        ],
+        ),
       ),
     );
   }

@@ -265,7 +265,7 @@ class _NewHouseSetupPageState extends State<NewHouseSetupPage> {
           title: Text(title),
           actions: [
             IconButton(
-              icon: const Icon(Icons.settings),
+              icon: const Icon(Icons.sensors_rounded),
               onPressed: () {
                 Navigator.push(
                   context,
