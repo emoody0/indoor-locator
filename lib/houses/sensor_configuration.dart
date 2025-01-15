@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'room.dart';
 import 'sensor.dart';
-import 'new_house_setup.dart';
 
 class SensorConfigurationPage extends StatefulWidget {
   final List<Room> rooms;
@@ -19,6 +18,45 @@ class _SensorConfigurationPageState extends State<SensorConfigurationPage> {
   int distanceFeet = 0;
   int distanceInches = 0;
 
+  Widget _buildSensorIcons(Room room) {
+    return Stack(
+      children: room.sensors.map((sensor) {
+        double iconOffsetX;
+        double iconOffsetY;
+        switch (sensor.wall) {
+          case 'Top':
+            iconOffsetX = room.position.dx + (sensor.distanceFromWall * 10.0);
+            iconOffsetY = room.position.dy + 2; // Close to top wall
+            break;
+          case 'Bottom':
+            iconOffsetX = room.position.dx + (sensor.distanceFromWall * 10.0);
+            iconOffsetY = room.position.dy + (room.height * 10.0) - 18; // Close to bottom wall
+            break;
+          case 'Left':
+            iconOffsetX = room.position.dx + 2; // Close to left wall
+            iconOffsetY = room.position.dy + (sensor.distanceFromWall * 10.0);
+            break;
+          case 'Right':
+            iconOffsetX = room.position.dx + (room.width * 10.0) - 18; // Close to right wall
+            iconOffsetY = room.position.dy + (sensor.distanceFromWall * 10.0);
+            break;
+          default:
+            iconOffsetX = room.position.dx;
+            iconOffsetY = room.position.dy;
+        }
+        return Positioned(
+          left: iconOffsetX,
+          top: iconOffsetY,
+          child: const Icon(
+            Icons.sensors,
+            size: 16,
+            color: Colors.red,
+          ),
+        );
+      }).toList(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -30,33 +68,38 @@ class _SensorConfigurationPageState extends State<SensorConfigurationPage> {
           Expanded(
             child: Stack(
               children: widget.rooms.map((room) {
-                return Positioned(
-                  left: room.position.dx,
-                  top: room.position.dy,
-                  child: GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        selectedRoom = room;
-                      });
-                    },
-                    child: Container(
-                      width: room.width * 10.0, // Scale to fit the screen
-                      height: room.height * 10.0,
-                      decoration: BoxDecoration(
-                        color: selectedRoom == room
-                            ? Colors.blueAccent.withOpacity(0.5)
-                            : Colors.grey.withOpacity(0.5),
-                        border: Border.all(color: Colors.black, width: 2),
-                      ),
-                      child: Center(
-                        child: Text(
-                          room.name,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(color: Colors.black),
+                return Stack(
+                  children: [
+                    Positioned(
+                      left: room.position.dx,
+                      top: room.position.dy,
+                      child: GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            selectedRoom = room;
+                          });
+                        },
+                        child: Container(
+                          width: room.width * 10.0, // Scale to fit the screen
+                          height: room.height * 10.0,
+                          decoration: BoxDecoration(
+                            color: selectedRoom == room
+                                ? Colors.blueAccent.withOpacity(0.5)
+                                : Colors.grey.withOpacity(0.5),
+                            border: Border.all(color: Colors.black, width: 2),
+                          ),
+                          child: Center(
+                            child: Text(
+                              room.name,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(color: Colors.black),
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  ),
+                    _buildSensorIcons(room),
+                  ],
                 );
               }).toList(),
             ),
@@ -123,7 +166,8 @@ class _SensorConfigurationPageState extends State<SensorConfigurationPage> {
                       selectedRoom!.sensors.add(Sensor(
                         name: nameController.text,
                         wall: selectedWall!,
-                        distanceFromWall: distanceFeet + (distanceInches / 12),
+                        distanceFromWall:
+                            distanceFeet + (distanceInches / 12),
                       ));
                       nameController.clear();
                       selectedWall = null;
@@ -132,7 +176,9 @@ class _SensorConfigurationPageState extends State<SensorConfigurationPage> {
                     });
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Each room can have up to 4 sensors.')),
+                      const SnackBar(
+                          content:
+                              Text('Each room can have up to 4 sensors.')),
                     );
                   }
                 } else {

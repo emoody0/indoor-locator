@@ -1,10 +1,12 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'room.dart';
+import 'dart:convert';
 
 class DatabaseHelper {
   static final DatabaseHelper _instance = DatabaseHelper._internal();
   factory DatabaseHelper() => _instance;
+  static const int _databaseVersion = 2; // Increment the version
 
   static Database? _database;
 
@@ -20,7 +22,7 @@ class DatabaseHelper {
     String path = join(await getDatabasesPath(), 'house_setup.db');
     return await openDatabase(
       path,
-      version: 2,
+      version: 3,// we shall see
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE rooms (
@@ -43,27 +45,36 @@ class DatabaseHelper {
 
 
   Future<void> _migrateDatabase(Database db, int oldVersion, int newVersion) async {
+    print('Upgrading database from $oldVersion to $newVersion');
     if (oldVersion < 2) {
-      // Check if the 'houseName' column already exists
-      final tableInfo = await db.rawQuery("PRAGMA table_info(rooms)");
-      final columnExists = tableInfo.any((column) => column['name'] == 'houseName');
-
-      if (!columnExists) {
         await db.execute('ALTER TABLE rooms ADD COLUMN houseName TEXT');
-        print('Added column houseName to rooms table');
-      } else {
-        print('Column houseName already exists in rooms table');
-      }
+    }
+    if (oldVersion < 3) {
+        await db.execute('ALTER TABLE rooms ADD COLUMN sensors TEXT');
     }
   }
 
 
+
+
+
   Future<int> insertRoom(Room room) async {
+    print('Updating room: ${room.toJson()}');
     final db = await database;
-    int id = await db.insert('rooms', room.toJson());
-    print('Inserted room with ID: $id'); // Debug log
-    return id;
+    return await db.insert('rooms', room.toJson());
   }
+
+  Future<int> updateRoom(Room room) async {
+    print('Updating room: ${room.toJson()}');
+    final db = await database;
+    return await db.update(
+      'rooms',
+      room.toJson(),
+      where: 'id = ?',
+      whereArgs: [room.id],
+    );
+  }
+
 
 
   Future<void> deleteHouseByName(String houseName) async {
@@ -76,19 +87,6 @@ class DatabaseHelper {
     );
   }
 
-  
-
-
-  Future<int> updateRoom(Room room) async {
-    final db = await database;
-    print('Updating room with ID: ${room.id}'); // Debug log
-    return await db.update(
-      'rooms',
-      room.toJson(),
-      where: 'id = ?',
-      whereArgs: [room.id],
-    );
-  }
 
 
   Future<int> deleteRoom(int id) async {
@@ -100,10 +98,12 @@ class DatabaseHelper {
     );
   }
 
-  Future<void> clearDatabase() async {
-    final db = await database;
-    await db.delete('rooms');
+  void clearDatabase() async {
+    final dbPath = join(await getDatabasesPath(), 'house_setup.db');
+    await deleteDatabase(dbPath);
   }
+
+
 
   Future<List<String>> getDistinctHouseNames() async {
     final db = await database;
