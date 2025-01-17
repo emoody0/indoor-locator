@@ -60,6 +60,39 @@ class _SensorConfigurationPageState extends State<SensorConfigurationPage>
     );
   }
 
+  void _updateConnectedRooms(Room draggedRoom, Offset delta, [Set<Room>? visited]) {
+    visited ??= {};
+    visited.add(draggedRoom);
+
+    for (final room in widget.rooms) {
+      if (!visited.contains(room) && _areRoomsConnected(draggedRoom, room)) {
+        room.position = Offset(
+          room.position.dx + delta.dx,
+          room.position.dy + delta.dy,
+        );
+        // Recursively update all connected rooms
+        _updateConnectedRooms(room, delta, visited);
+      }
+    }
+  }
+
+
+
+  bool _areRoomsConnected(Room room1, Room room2) {
+    // Logic to determine if two rooms are connected
+    final room1Right = room1.position.dx + room1.width * 10.0;
+    final room1Bottom = room1.position.dy + room1.height * 10.0;
+    final room2Right = room2.position.dx + room2.width * 10.0;
+    final room2Bottom = room2.position.dy + room2.height * 10.0;
+
+    final horizontallyAligned =
+        (room1.position.dy == room2.position.dy || room1Bottom == room2.position.dy);
+    final verticallyAligned =
+        (room1.position.dx == room2.position.dx || room1Right == room2.position.dx);
+
+    return horizontallyAligned || verticallyAligned;
+  }
+
   List<Widget> _buildSensorIcons(Room room) {
     return room.sensors.map((sensor) {
       double iconOffsetX;
@@ -218,42 +251,55 @@ class _SensorConfigurationPageState extends State<SensorConfigurationPage>
         children: [
           Expanded(
             flex: 2,
-            child: Stack(
-              children: [
-                ...widget.rooms.map((room) {
-                  return Positioned(
-                    left: room.position.dx,
-                    top: room.position.dy,
-                    child: GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          selectedRoom = room;
-                        });
-                      },
-                      child: Container(
-                        width: room.width * 10.0,
-                        height: room.height * 10.0,
-                        decoration: BoxDecoration(
-                          color: selectedRoom == room
-                              ? Colors.blueAccent.withOpacity(0.5)
-                              : Colors.grey.withOpacity(0.5),
-                          border: Border.all(color: Colors.black, width: 2),
-                        ),
-                        child: Center(
-                          child: Text(
-                            room.name,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(color: Colors.black),
+            child: GestureDetector(
+              onPanUpdate: (details) {
+                setState(() {
+                  for (final room in widget.rooms) {
+                    room.position = Offset(
+                      room.position.dx + details.delta.dx,
+                      room.position.dy + details.delta.dy,
+                    );
+                  }
+                });
+              },
+              child: Stack(
+                children: [
+                  ...widget.rooms.map((room) {
+                    return Positioned(
+                      left: room.position.dx,
+                      top: room.position.dy,
+                      child: GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            selectedRoom = room;
+                          });
+                        },
+                        child: Container(
+                          width: room.width * 10.0,
+                          height: room.height * 10.0,
+                          decoration: BoxDecoration(
+                            color: selectedRoom == room
+                                ? Colors.blueAccent.withOpacity(0.5)
+                                : Colors.grey.withOpacity(0.5),
+                            border: Border.all(color: Colors.black, width: 2),
+                          ),
+                          child: Center(
+                            child: Text(
+                              room.name,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(color: Colors.black),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  );
-                }),
-                ...widget.rooms.expand((room) => _buildSensorIcons(room)),
-              ],
+                    );
+                  }),
+                  ...widget.rooms.expand((room) => _buildSensorIcons(room)),
+                ],
+              ),
             ),
           ),
+
           TabBar(
             controller: _tabController,
             tabs: const [
