@@ -3,7 +3,7 @@ import 'room_widget.dart';
 import 'room.dart';
 import 'sensor.dart';
 import 'sensor_configuration.dart';
-import 'database_helper.dart';
+import '../database_helper.dart';
 import 'dart:convert'; // For JSON encoding/decoding
 
 class NewHouseSetupPage extends StatefulWidget {

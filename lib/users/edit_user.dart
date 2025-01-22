@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../config.dart'; // Import config file
+import '../database_helper.dart'; // Import DatabaseHelper for user data handling
 
 class EditUserPage extends StatefulWidget {
+  final int id; // User ID
   final String name;
   final String email;
   final String house;
@@ -9,6 +11,7 @@ class EditUserPage extends StatefulWidget {
 
   const EditUserPage({
     super.key,
+    required this.id,
     required this.name,
     required this.email,
     required this.house,
@@ -27,6 +30,7 @@ class _EditUserPageState extends State<EditUserPage> {
   bool isSaved = false; // Tracks if the user clicked the Save button
   bool hasChanges = false; // Tracks if any changes were made
 
+  final DatabaseHelper dbHelper = DatabaseHelper(); // Database helper instance
   final List<String> houseOptions = ['House 1', 'House 2', 'House 3']; // Example house options
 
   @override
@@ -91,7 +95,7 @@ class _EditUserPageState extends State<EditUserPage> {
     });
   }
 
-  void _validateAndSave() {
+  Future<void> _validateAndSave() async {
     final name = nameController.text;
     final email = emailController.text;
 
@@ -114,15 +118,25 @@ class _EditUserPageState extends State<EditUserPage> {
         ),
       );
     } else {
+      // Save to database
+      await dbHelper.updateUser(widget.id, {
+        'name': name,
+        'email': email,
+        'userType': userType,
+        'house': selectedHouse,
+      });
+
       setState(() {
         isSaved = true; // Mark as saved
         hasChanges = false; // Reset change tracking
       });
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('User updated successfully!'),
         ),
       );
+
       Navigator.pop(context); // Go back after saving
     }
   }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../config.dart'; // Import config file
+import '../database_helper.dart';
 
 class AddUserPage extends StatefulWidget {
   const AddUserPage({super.key});
@@ -60,39 +61,45 @@ class _AddUserPageState extends State<AddUserPage> {
     return true; // Allow navigation if saved
   }
 
-  void _validateAndSave() {
+  void _validateAndSave() async {
     final name = nameController.text;
     final email = emailController.text;
 
     if (name.isEmpty || email.isEmpty || selectedHouse == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please fill in all fields.'),
-        ),
+        const SnackBar(content: Text('Please fill in all fields.')),
       );
     } else if (!isValidName(name)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Name should only contain alphabetic characters.'),
-        ),
+        const SnackBar(content: Text('Name should only contain alphabetic characters.')),
       );
     } else if (!isValidEmail(email)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Email must be a valid Gmail account (e.g., user@gmail.com).'),
-        ),
+        const SnackBar(content: Text('Email must be a valid Gmail account.')),
       );
     } else {
-      setState(() {
-        isSaved = true; // Mark as saved
+      final db = DatabaseHelper();
+      await db.insertUser({
+        'name': name,
+        'email': email,
+        'userType': userType,
+        'house': selectedHouse,
+        'organization': 'DefaultOrg', // Adjust as necessary
       });
+
+      setState(() {
+        isSaved = true;
+      });
+
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('User saved successfully!'),
-        ),
+        const SnackBar(content: Text('User saved successfully!')),
       );
+
+      Navigator.pop(context);
     }
   }
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -215,3 +222,4 @@ class _AddUserPageState extends State<AddUserPage> {
     );
   }
 }
+

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../config.dart'; // Import config file
 
 class ViewUserPage extends StatelessWidget {
+  final int id; // User ID
   final String name;
   final String email;
   final String house;
@@ -9,6 +10,7 @@ class ViewUserPage extends StatelessWidget {
 
   const ViewUserPage({
     super.key,
+    required this.id,
     required this.name,
     required this.email,
     required this.house,
@@ -33,6 +35,24 @@ class ViewUserPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            const Text(
+              'User Details',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 20),
+
+            // Display ID
+            const Text(
+              'User ID',
+              style: TextStyle(fontSize: 18),
+            ),
+            Text(
+              id.toString(), // Display user ID
+              style: const TextStyle(fontSize: 16, color: Colors.black54),
+            ),
+            const SizedBox(height: 20),
+
+            // Display User Type
             const Text(
               'User Type',
               style: TextStyle(fontSize: 18),
