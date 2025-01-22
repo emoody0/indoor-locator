@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../config.dart';
+import '../database_helper.dart';
 
 class WeeklyReportsPage extends StatefulWidget {
   final bool isAdmin;
@@ -30,7 +31,7 @@ class _WeeklyReportsPageState extends State<WeeklyReportsPage> {
 
   // Example data
   final List<String> weeks = ['This Week', 'Last Week', 'Week of 01/14/2025'];
-  final List<String> users = ['User1', 'User2', 'User3']; // Admin-only
+  List<Map<String, dynamic>> users = []; // Admin-only
 
   void fetchReportData() {
     // Simulate fetching data from the database
@@ -50,10 +51,19 @@ class _WeeklyReportsPageState extends State<WeeklyReportsPage> {
     });
   }
 
-  @override
+ @override
   void initState() {
     super.initState();
-    fetchReportData(); // Fetch initial report data (e.g., for "This Week")
+    fetchReportData(); // Fetch initial report data (e.g., "Today" for the logged-in user)
+    fetchUsers();
+  }
+
+  void fetchUsers() async {
+    final db = DatabaseHelper();
+    final userList = await db.getUsers();
+    setState(() {
+      users = userList;
+    });
   }
 
   @override
@@ -94,14 +104,14 @@ class _WeeklyReportsPageState extends State<WeeklyReportsPage> {
                 hint: const Text('Select a user'),
                 items: users.map((user) {
                   return DropdownMenuItem<String>(
-                    value: user,
-                    child: Text(user),
+                    value: user['name'],
+                    child: Text(user['name']),
                   );
                 }).toList(),
                 onChanged: (value) {
                   setState(() {
                     selectedUser = value;
-                    fetchReportData(); // Simulate fetching data for the selected user
+                    fetchReportData(); // Update data for the selected user
                   });
                 },
               ),

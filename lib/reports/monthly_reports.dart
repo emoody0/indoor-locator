@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../config.dart';
+import '../database_helper.dart';
 
 class MonthlyReportsPage extends StatefulWidget {
   final bool isAdmin;
@@ -30,7 +31,7 @@ class _MonthlyReportsPageState extends State<MonthlyReportsPage> {
 
   // Example data
   final List<String> months = ['This Month', 'Last Month', 'March 2025'];
-  final List<String> users = ['User1', 'User2', 'User3']; // Admin-only
+  List<Map<String, dynamic>> users = []; // Admin-only
 
   void fetchReportData() {
     // Simulate fetching data from the database
@@ -54,7 +55,18 @@ class _MonthlyReportsPageState extends State<MonthlyReportsPage> {
   @override
   void initState() {
     super.initState();
-    fetchReportData(); // Fetch initial report data (e.g., for "This Month")
+    fetchReportData(); // Fetch initial report data (e.g., "Today" for the logged-in user)
+    fetchUsers();
+  }
+
+  
+
+  void fetchUsers() async {
+    final db = DatabaseHelper();
+    final userList = await db.getUsers();
+    setState(() {
+      users = userList;
+    });
   }
 
   @override
@@ -95,14 +107,14 @@ class _MonthlyReportsPageState extends State<MonthlyReportsPage> {
                 hint: const Text('Select a user'),
                 items: users.map((user) {
                   return DropdownMenuItem<String>(
-                    value: user,
-                    child: Text(user),
+                    value: user['name'],
+                    child: Text(user['name']),
                   );
                 }).toList(),
                 onChanged: (value) {
                   setState(() {
                     selectedUser = value;
-                    fetchReportData(); // Simulate fetching data for the selected user
+                    fetchReportData(); // Update data for the selected user
                   });
                 },
               ),
