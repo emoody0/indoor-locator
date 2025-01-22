@@ -4,6 +4,7 @@ import 'settings.dart';
 import '../../log_view/view_logs.dart';
 import '../../log_view/view_alerts.dart';
 import '../../server/mqtt.dart'; // Import the new page
+import '../../reports/reports.dart';
 
 class AdminPortal extends StatelessWidget {
   const AdminPortal({super.key});
@@ -82,6 +83,20 @@ class AdminPortal extends StatelessWidget {
                   context,
                   MaterialPageRoute(
                     builder: (context) => const ManageClientServerPage(),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.analytics_outlined),
+              title: const Text('Reports'),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const ReportsPage(
+                      isAdmin: true,
+                    ),
                   ),
                 );
               },
