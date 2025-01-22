@@ -31,7 +31,7 @@ class _EditUserPageState extends State<EditUserPage> {
   bool hasChanges = false; // Tracks if any changes were made
 
   final DatabaseHelper dbHelper = DatabaseHelper(); // Database helper instance
-  final List<String> houseOptions = ['House 1', 'House 2', 'House 3']; // Example house options
+  List<String> houseOptions = []; // Dynamic house options
 
   @override
   void initState() {
@@ -40,6 +40,15 @@ class _EditUserPageState extends State<EditUserPage> {
     nameController = TextEditingController(text: widget.name);
     emailController = TextEditingController(text: widget.email);
     selectedHouse = widget.house;
+
+    _loadHouseOptions(); // Load house options
+  }
+
+  Future<void> _loadHouseOptions() async {
+    final options = await dbHelper.getDistinctHouseNames(); // Fetch house names
+    setState(() {
+      houseOptions = options;
+    });
   }
 
   bool isValidEmail(String email) {
@@ -158,7 +167,7 @@ class _EditUserPageState extends State<EditUserPage> {
             },
           ),
         ),
-        body: SingleChildScrollView( // Add scroll view to prevent overflow
+        body: SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -242,11 +251,11 @@ class _EditUserPageState extends State<EditUserPage> {
                   });
                 },
               ),
-              if (selectedHouse == null)
+              if (selectedHouse == null && houseOptions.isEmpty)
                 const Padding(
                   padding: EdgeInsets.only(top: 8.0),
                   child: Text(
-                    'Please select a house',
+                    'No houses available. Please create a house first.',
                     style: TextStyle(color: Colors.red),
                   ),
                 ),
