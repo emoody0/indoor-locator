@@ -40,7 +40,7 @@ class _ManageClientServerPageState extends State<ManageClientServerPage> {
       isConnected = false;
     });
 
-    client = MqttServerClient.withPort('192.168.56.105', 'flutter_client', 1883);
+    client = MqttServerClient.withPort('192.168.56.1', 'flutter_client', 1883);
     client!.logging(on: true);
     client!.keepAlivePeriod = 60;
     client!.onConnected = onConnected;

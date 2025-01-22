@@ -3,7 +3,8 @@ import 'config.dart';
 import 'settings.dart';
 import '../../log_view/view_logs.dart';
 import '../../log_view/view_alerts.dart';
-import '../../server/mqtt.dart'; // Import the new page
+import '../../server/mqtt.dart';
+import '../../server/send_data_view.dart'; // Import the SQL page
 
 class AdminPortal extends StatelessWidget {
   const AdminPortal({super.key});
@@ -73,7 +74,6 @@ class AdminPortal extends StatelessWidget {
                 );
               },
             ),
-            // New ListTile for managing client and server
             ListTile(
               leading: const Icon(Icons.computer),
               title: const Text('Manage Client/Server'),
@@ -82,6 +82,19 @@ class AdminPortal extends StatelessWidget {
                   context,
                   MaterialPageRoute(
                     builder: (context) => const ManageClientServerPage(),
+                  ),
+                );
+              },
+            ),
+            // New ListTile for SQL Data Page
+            ListTile(
+              leading: const Icon(Icons.data_usage),
+              title: const Text('Manage SQL Data'),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const SendDataView(),
                   ),
                 );
               },
