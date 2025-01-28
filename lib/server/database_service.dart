@@ -26,31 +26,33 @@ class DatabaseService {
     }
   }
 
-  /// Fetch all rows from a specific table
-  static Future<void> fetchData(String tableName) async {
-    print('Fetching data from table: $tableName...');
+  
+  static Future<List<Map<String, dynamic>>> fetchData(String tableName) async {
+    final conn = await MySqlConnection.connect(settings);
     try {
-      final conn = await MySqlConnection.connect(settings);
-      print('[SUCCESS] Connected to the database.');
+      print('[INFO] Querying table: $tableName');
+      final results = await conn.query('SELECT * FROM $tableName');
 
-      // Execute a SELECT query
-      var results = await conn.query('SELECT * FROM $tableName');
-      print('[INFO] Query executed successfully.');
-      if (results.isEmpty) {
-        print('[INFO] No data found in the table: $tableName');
-      } else {
-        for (var row in results) {
-          print('[DATA] Row: $row');
+      // Convert the results into a list of maps
+      final data = results.map((row) {
+        final map = <String, dynamic>{};
+        for (var columnName in row.fields.keys) {
+          map[columnName] = row[columnName];
         }
-      }
+        return map;
+      }).toList();
 
-      // Close the connection
+      print('[SUCCESS] Data fetched successfully: $data');
+      return data;
+    } catch (e) {
+      print('[ERROR] Failed to query table: $e');
+      rethrow; // Rethrow the error for handling in the UI
+    } finally {
       await conn.close();
       print('[INFO] Database connection closed.');
-    } catch (e) {
-      print('[ERROR] Failed to fetch data: $e');
     }
   }
+
 
   /// Insert data into a specific table
   static Future<void> insertData(String tableName, Map<String, dynamic> data) async {
@@ -77,4 +79,23 @@ class DatabaseService {
       print('[ERROR] Failed to insert data: $e');
     }
   }
+
+
+  static Future<void> deleteData(String tableName, String condition) async {
+  final conn = await MySqlConnection.connect(settings);
+  try {
+    // Execute the DELETE query
+    final query = 'DELETE FROM $tableName WHERE $condition';
+    print('[INFO] Executing query: $query');
+    await conn.query(query);
+    print('[SUCCESS] Data deleted successfully from $tableName');
+  } catch (e) {
+    print('[ERROR] Failed to delete data: $e');
+    rethrow; // Rethrow the error for handling in the UI
+  } finally {
+    await conn.close();
+    print('[INFO] Database connection closed.');
+  }
+}
+
 }

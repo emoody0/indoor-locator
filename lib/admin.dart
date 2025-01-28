@@ -4,6 +4,7 @@ import 'settings.dart';
 import '../../log_view/view_logs.dart';
 import '../../log_view/view_alerts.dart';
 import '../../server/mqtt.dart';
+import '../../server/manage_sql_page.dart'; // Import the new SQL management page
 
 class AdminPortal extends StatelessWidget {
   const AdminPortal({super.key});
@@ -81,6 +82,18 @@ class AdminPortal extends StatelessWidget {
                   context,
                   MaterialPageRoute(
                     builder: (context) => const ManageClientServerPage(),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.table_chart),
+              title: const Text('Manage SQL Tables'),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const ManageSQLPage(),
                   ),
                 );
               },
