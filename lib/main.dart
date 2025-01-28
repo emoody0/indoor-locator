@@ -2,9 +2,18 @@ import 'package:flutter/material.dart';
 import 'config.dart'; // Import the config file
 import 'resident.dart'; // Import Resident portal
 import 'admin.dart'; // Import Admin portal
+import '/server/database_service.dart';
 
 void main() {
   runApp(const MyApp());
+  DatabaseService.testConnection();
+  DatabaseService.fetchData('sensor_test');
+  // DatabaseService.insertData('sensor_test', {
+  //   'distance': 100,
+  //   'time': DateTime.now().toString(), // Replace fields with your table structure
+  // });
+  
+
 }
 
 class MyApp extends StatelessWidget {
