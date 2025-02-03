@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../config.dart';
+import '../database_helper.dart';
 
 class ViewAlertsPage extends StatefulWidget {
   final bool isAdmin;
@@ -15,6 +16,54 @@ class _ViewAlertsPageState extends State<ViewAlertsPage> {
   String? selectedHouse;
   String? selectedSensor;
 
+  List<Map<String, dynamic>> users = [];
+  List<Map<String, dynamic>> filteredUsers = [];
+  List<String> houses = [];
+  List<String> sensors = ['Bedroom', 'Living Room', 'Kitchen'];
+
+  @override
+  void initState() {
+    super.initState();
+    fetchUsersAndHouses();
+  }
+
+  Future<void> fetchUsersAndHouses() async {
+    final db = DatabaseHelper();
+    final userList = await db.getUsers();
+    final houseList = await db.getDistinctHouseNames();
+
+    setState(() {
+      users = userList;
+      houses = houseList;
+      filteredUsers = users; // Initially, all users are shown
+    });
+  }
+
+  void onUserSelected(String? userName) {
+    setState(() {
+      selectedUser = userName;
+
+      if (userName != null) {
+        final user = users.firstWhere((user) => user['name'] == userName, orElse: () => {});
+        selectedHouse = user['house']; // Autofill house based on user
+      }
+    });
+  }
+
+  void onHouseSelected(String? houseName) {
+    setState(() {
+      selectedHouse = houseName;
+
+      if (houseName != null) {
+        filteredUsers = users.where((user) => user['house'] == houseName).toList();
+      } else {
+        filteredUsers = users; // Reset to all users if no house is selected
+      }
+
+      selectedUser = null; // Reset user selection when house changes
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -28,47 +77,39 @@ class _ViewAlertsPageState extends State<ViewAlertsPage> {
           children: [
             if (widget.isAdmin) ...[
               DropdownButtonFormField<String>(
-                value: selectedUser,
-                decoration: const InputDecoration(labelText: 'Filter by User'),
-                items: <String>['User1', 'User2', 'User3']
-                    .map((user) => DropdownMenuItem(
-                          value: user,
-                          child: Text(user),
-                        ))
-                    .toList(),
-                onChanged: (value) {
-                  setState(() {
-                    selectedUser = value;
-                  });
-                },
+                value: selectedHouse,
+                decoration: const InputDecoration(labelText: 'Filter by House'),
+                items: houses.map((house) {
+                  return DropdownMenuItem<String>(
+                    value: house,
+                    child: Text(house),
+                  );
+                }).toList(),
+                onChanged: onHouseSelected,
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
-                value: selectedHouse,
-                decoration: const InputDecoration(labelText: 'Filter by House'),
-                items: <String>['House1', 'House2', 'House3']
-                    .map((house) => DropdownMenuItem(
-                          value: house,
-                          child: Text(house),
-                        ))
-                    .toList(),
-                onChanged: (value) {
-                  setState(() {
-                    selectedHouse = value;
-                  });
-                },
+                value: selectedUser,
+                decoration: const InputDecoration(labelText: 'Filter by User'),
+                items: filteredUsers.map((user) {
+                  return DropdownMenuItem<String>(
+                    value: user['name'],
+                    child: Text(user['name']),
+                  );
+                }).toList(),
+                onChanged: onUserSelected,
               ),
               const SizedBox(height: 16),
             ],
             DropdownButtonFormField<String>(
               value: selectedSensor,
               decoration: const InputDecoration(labelText: 'Filter by Space'),
-              items: <String>['Bedroom', 'Living Room', 'Kitchen']
-                  .map((space) => DropdownMenuItem(
-                        value: space,
-                        child: Text(space),
-                      ))
-                  .toList(),
+              items: sensors.map((space) {
+                return DropdownMenuItem<String>(
+                  value: space,
+                  child: Text(space),
+                );
+              }).toList(),
               onChanged: (value) {
                 setState(() {
                   selectedSensor = value;
@@ -78,11 +119,11 @@ class _ViewAlertsPageState extends State<ViewAlertsPage> {
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () {
-                // Clear the filter selections
                 setState(() {
                   selectedUser = null;
                   selectedHouse = null;
                   selectedSensor = null;
+                  filteredUsers = users; // Reset filtered users
                 });
               },
               child: const Text('Clear Filters'),
@@ -91,7 +132,6 @@ class _ViewAlertsPageState extends State<ViewAlertsPage> {
             Expanded(
               child: ListView(
                 children: const [
-                  // Here would be the code to display the filtered alerts based on the selected criteria.
                   Text('Displaying alerts...'),
                 ],
               ),
