@@ -19,10 +19,11 @@ class ViewHousePage extends StatelessWidget {
             size: Size.infinite,
             painter: GridPainter(), // Grid painter for feet grid
           ),
-          // Add the rooms with an outline
+          // Add the rooms with an outline and their sensors
           ...rooms.map((room) {
             return Stack(
               children: [
+                // Draw the room
                 Positioned(
                   left: room.position.dx,
                   top: room.position.dy,
@@ -52,11 +53,13 @@ class ViewHousePage extends StatelessWidget {
     );
   }
 
+  /// Builds sensor icons for the room
   List<Widget> _buildSensorIcons(Room room) {
     return room.sensors.map((sensor) {
       double iconOffsetX;
       double iconOffsetY;
 
+      // Calculate sensor position based on its wall and distance from the wall
       switch (sensor.wall) {
         case 'Top':
           iconOffsetX = room.position.dx + (sensor.distanceFromWall * 10.0);
@@ -82,10 +85,13 @@ class ViewHousePage extends StatelessWidget {
       return Positioned(
         left: iconOffsetX,
         top: iconOffsetY,
-        child: const Icon(
-          Icons.sensors,
-          size: 16,
-          color: Colors.red,
+        child: Tooltip(
+          message: sensor.name, // Display sensor name on hover/long press
+          child: const Icon(
+            Icons.sensors,
+            size: 16,
+            color: Colors.red, // Red icon for sensor
+          ),
         ),
       );
     }).toList();

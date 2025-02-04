@@ -117,46 +117,26 @@ class _NewHouseSetupPageState extends State<NewHouseSetupPage> {
 
   Future<void> saveHouseToDatabase() async {
     final db = DatabaseHelper();
-
     String? existingHouseName = rooms.isNotEmpty ? rooms.first.houseName : null;
 
-    // Get a list of rooms currently stored in the database for the house
-    final List<Room> existingRooms = existingHouseName != null
-        ? await db.getRoomsByHouseName(existingHouseName)
-        : [];
-
-    if (existingHouseName != null && existingHouseName.isNotEmpty) {
-      // Delete rooms that are no longer in the current list
-      for (var existingRoom in existingRooms) {
-        if (!rooms.any((room) => room.id == existingRoom.id)) {
-          await db.deleteRoom(existingRoom.id!);
-        }
-      }
-
-      // Update or insert current rooms
+    if (existingHouseName != null) {
       for (var room in rooms) {
         room.houseName = existingHouseName;
-
-        // Serialize sensors into a JSON-compatible format
         final serializedSensors = room.sensors.map((sensor) => sensor.toJson()).toList();
 
         if (room.id == null) {
-          // Insert the room with its serialized sensors
           room.id = await db.insertRoom(room.copyWith(
             sensors: serializedSensors.map((data) => Sensor.fromJson(data)).toList(),
           ));
         } else {
-          // Update the room with its serialized sensors
           await db.updateRoom(room.copyWith(
             sensors: serializedSensors.map((data) => Sensor.fromJson(data)).toList(),
           ));
         }
       }
-
       _showSnackBar('House "$existingHouseName" updated successfully!');
     } else {
       TextEditingController nameController = TextEditingController();
-
       await showDialog(
         context: context,
         builder: (BuildContext context) {
@@ -187,11 +167,8 @@ class _NewHouseSetupPageState extends State<NewHouseSetupPage> {
 
         for (var room in rooms) {
           room.houseName = nameController.text;
-
-          // Serialize sensors into a JSON-compatible format
           final serializedSensors = room.sensors.map((sensor) => sensor.toJson()).toList();
 
-          // Insert the room with its serialized sensors
           room.id = await db.insertRoom(room.copyWith(
             sensors: serializedSensors.map((data) => Sensor.fromJson(data)).toList(),
           ));
@@ -202,6 +179,7 @@ class _NewHouseSetupPageState extends State<NewHouseSetupPage> {
       }
     }
   }
+
 
 
 

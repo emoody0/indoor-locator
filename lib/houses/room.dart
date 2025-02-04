@@ -13,7 +13,7 @@ class Room {
   String name;
   int? groupId;
   String? houseName;
-  List<Sensor> sensors = [];
+  List<Sensor> sensors;
 
   Room({
     this.id,
@@ -29,6 +29,7 @@ class Room {
     this.sensors = const [],
   });
 
+  /// Creates a copy of the room with updated properties
   Room copyWith({
     int? id,
     Offset? position,
@@ -57,7 +58,7 @@ class Room {
     );
   }
 
-  // Serialization methods for database compatibility
+  /// Converts the Room instance to a JSON object for database storage
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -70,21 +71,22 @@ class Room {
       'name': name,
       'groupId': groupId,
       'houseName': houseName,
-      'sensors': jsonEncode(sensors.map((sensor) => sensor.toJson()).toList()), // Serialize as JSON string
+      'sensors': jsonEncode(sensors.map((sensor) => sensor.toJson()).toList()), // Serialize sensors
     };
   }
 
-
+  /// Creates a Room instance from a JSON object
   static Room fromJson(Map<String, dynamic> json) {
     Offset parsePosition(String value) {
       final Map<String, dynamic> parsed = jsonDecode(value);
       return Offset(
-        (parsed['x'] as num).toDouble(),
-        (parsed['y'] as num).toDouble(),
+        (parsed['x'] as num?)?.toDouble() ?? 0.0, // Default to 0.0 if null
+        (parsed['y'] as num?)?.toDouble() ?? 0.0, // Default to 0.0 if null
       );
     }
 
-    List<Sensor> parseSensors(String value) {
+    List<Sensor> parseSensors(String? value) {
+      if (value == null || value.isEmpty) return [];
       final List<dynamic> parsed = jsonDecode(value);
       return parsed.map((e) => Sensor.fromJson(e as Map<String, dynamic>)).toList();
     }
@@ -101,10 +103,9 @@ class Room {
       groupId: json['groupId'] as int?,
       houseName: json['houseName'] as String?,
       sensors: json['sensors'] != null
-        ? (jsonDecode(json['sensors']) as List<dynamic>)
-            .map((e) => Sensor.fromJson(e as Map<String, dynamic>))
-            .toList()
-        : [],
+          ? parseSensors(json['sensors'] as String)
+          : [],
     );
   }
+
 }

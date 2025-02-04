@@ -197,18 +197,53 @@ class _SensorConfigurationPageState extends State<SensorConfigurationPage>
                   selectedWall != null &&
                   nameController.text.isNotEmpty) {
                 setState(() {
+                  // Calculate the position of the sensor
+                  Offset sensorPosition;
+                  double distanceInPixels = ((int.tryParse(distanceFeetController.text) ?? 0) * 10) +
+                      ((int.tryParse(distanceInchesController.text) ?? 0) / 12 * 10);
+
+                  switch (selectedWall) {
+                    case 'Top':
+                      sensorPosition = Offset(
+                        selectedRoom!.position.dx + distanceInPixels,
+                        selectedRoom!.position.dy,
+                      );
+                      break;
+                    case 'Bottom':
+                      sensorPosition = Offset(
+                        selectedRoom!.position.dx + distanceInPixels,
+                        selectedRoom!.position.dy + (selectedRoom!.height * 10.0),
+                      );
+                      break;
+                    case 'Left':
+                      sensorPosition = Offset(
+                        selectedRoom!.position.dx,
+                        selectedRoom!.position.dy + distanceInPixels,
+                      );
+                      break;
+                    case 'Right':
+                      sensorPosition = Offset(
+                        selectedRoom!.position.dx + (selectedRoom!.width * 10.0),
+                        selectedRoom!.position.dy + distanceInPixels,
+                      );
+                      break;
+                    default:
+                      sensorPosition = selectedRoom!.position; // Default to room's position
+                  }
+
                   selectedRoom!.sensors.add(Sensor(
                     name: nameController.text,
                     wall: selectedWall!,
-                    distanceFromWall: (int.tryParse(distanceFeetController.text) ?? 0) +
-                        ((int.tryParse(distanceInchesController.text) ?? 0) / 12),
+                    distanceFromWall: distanceInPixels / 10, // Convert back to feet
+                    position: sensorPosition,
                   ));
-                  _resetInputs();
                 });
+                _resetInputs();
               }
             },
             child: const Text('Add Sensor'),
           ),
+
         ] else ...[
           const Padding(
             padding: EdgeInsets.all(16.0),
@@ -401,12 +436,49 @@ class EditSensorPage extends StatelessWidget {
               children: [
                 ElevatedButton(
                   onPressed: () {
+                    // Calculate the sensor's position
+                    double distanceInPixels = (double.tryParse(distanceFeetController.text) ?? 0) * 10 +
+                        ((double.tryParse(distanceInchesController.text) ?? 0) / 12 * 10);
+
+                    Offset sensorPosition;
+                    switch (selectedWall) {
+                      case 'Top':
+                        sensorPosition = Offset(
+                          room.position.dx + distanceInPixels,
+                          room.position.dy,
+                        );
+                        break;
+                      case 'Bottom':
+                        sensorPosition = Offset(
+                          room.position.dx + distanceInPixels,
+                          room.position.dy + (room.height * 10.0),
+                        );
+                        break;
+                      case 'Left':
+                        sensorPosition = Offset(
+                          room.position.dx,
+                          room.position.dy + distanceInPixels,
+                        );
+                        break;
+                      case 'Right':
+                        sensorPosition = Offset(
+                          room.position.dx + (room.width * 10.0),
+                          room.position.dy + distanceInPixels,
+                        );
+                        break;
+                      default:
+                        sensorPosition = room.position;
+                    }
+
+                    // Create the updated sensor
                     final updatedSensor = Sensor(
                       name: nameController.text,
                       wall: selectedWall,
                       distanceFromWall: double.parse(distanceFeetController.text) +
                           (double.parse(distanceInchesController.text) / 12),
+                      position: sensorPosition,
                     );
+
                     onUpdate(updatedSensor);
                     Navigator.pop(context);
                   },
@@ -419,6 +491,7 @@ class EditSensorPage extends StatelessWidget {
                 ),
               ],
             ),
+
           ],
         ),
       ),

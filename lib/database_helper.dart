@@ -22,37 +22,51 @@ class DatabaseHelper {
     String path = join(await getDatabasesPath(), 'house_setup.db');
     return await openDatabase(
       path,
-      version: _databaseVersion,
+      version: 3, // Update the version number if you have schema changes
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE rooms (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              position TEXT,
-              width REAL,
-              height REAL,
-              isGrouped INTEGER,
-              connectedRoom TEXT,
-              connectedWall TEXT,
-              name TEXT, -- Room name
-              houseName TEXT, -- House name
-              groupId INTEGER
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            position TEXT,
+            width REAL,
+            height REAL,
+            isGrouped INTEGER,
+            connectedRoom TEXT,
+            connectedWall TEXT,
+            name TEXT,
+            houseName TEXT,
+            groupId INTEGER
           )
-        '''); // Unchanged: Room table creation
+        ''');
 
         await db.execute('''
-          CREATE TABLE users (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              name TEXT,
-              email TEXT,
-              userType TEXT,
-              house TEXT,
-              organization TEXT
+          CREATE TABLE sensors (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            houseName TEXT,
+            roomName TEXT,
+            position TEXT,
+            sensorType TEXT
           )
-        '''); // User table creation
+        ''');
       },
-      onUpgrade: _migrateDatabase,
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 3) {
+          await db.execute('ALTER TABLE rooms ADD COLUMN position TEXT');
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS sensors (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              houseName TEXT,
+              roomName TEXT,
+              position TEXT,
+              sensorType TEXT
+            )
+          ''');
+        }
+      },
     );
   }
+
+
 
   Future<void> _migrateDatabase(Database db, int oldVersion, int newVersion) async {
     print('Upgrading database from $oldVersion to $newVersion');
