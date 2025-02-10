@@ -27,12 +27,20 @@ class _SensorConfigurationPageState extends State<SensorConfigurationPage>
     _tabController = TabController(length: 2, vsync: this);
   }
 
-  void _resetInputs() {
-    nameController.clear();
-    distanceFeetController.clear();
-    distanceInchesController.clear();
-    selectedWall = null;
+  void _resetInputs({bool fullReset = true}) {
+    print("Reset Inputs Triggered - fullReset: $fullReset"); // Debugging print statement
+    if (fullReset) {
+        nameController.text = nameController.text.isNotEmpty ? nameController.text : "";
+        distanceFeetController.text = distanceFeetController.text.isNotEmpty ? distanceFeetController.text : "";
+        distanceInchesController.text = distanceInchesController.text.isNotEmpty ? distanceInchesController.text : "";
+        
+        // Do not reset selectedWall if it already has a value
+        selectedWall = selectedWall ?? null; 
+    }
   }
+
+
+
 
   void _navigateToEditSensorPage(Sensor sensor, Room room) {
     Navigator.push(
@@ -51,9 +59,10 @@ class _SensorConfigurationPageState extends State<SensorConfigurationPage>
           },
           onDelete: () {
             setState(() {
-              room.sensors.remove(sensor);
+              room.sensors = List.from(room.sensors)..remove(sensor);
             });
             Navigator.pop(context);
+            _showSnackBar('Sensor "${sensor.name}" has been deleted.');
           },
         ),
       ),
@@ -62,17 +71,13 @@ class _SensorConfigurationPageState extends State<SensorConfigurationPage>
 
   void _updateConnectedRooms(Room draggedRoom, Offset delta, [Set<Room>? visited]) {
     visited ??= {};
-    visited.add(draggedRoom);
+    if (visited.contains(draggedRoom)) return;
 
-    for (final room in widget.rooms) {
-      if (!visited.contains(room) && _areRoomsConnected(draggedRoom, room)) {
-        room.position = Offset(
-          room.position.dx + delta.dx,
-          room.position.dy + delta.dy,
-        );
-        // Recursively update all connected rooms
-        _updateConnectedRooms(room, delta, visited);
-      }
+    visited.add(draggedRoom);
+    draggedRoom.position += delta;
+
+    for (final room in widget.rooms.where((room) => _areRoomsConnected(draggedRoom, room))) {
+      _updateConnectedRooms(room, delta, visited);
     }
   }
 
@@ -125,9 +130,12 @@ class _SensorConfigurationPageState extends State<SensorConfigurationPage>
       }
 
       // Clamp the offsets to ensure they stay within room boundaries
+      iconOffsetX = iconOffsetX.clamp(room.position.dx, room.position.dx + maxHorizontalDistance - 16);
+      iconOffsetY = iconOffsetY.clamp(room.position.dy, room.position.dy + maxVerticalDistance - 16);
+
       return Positioned(
-        left: iconOffsetX.clamp(room.position.dx, room.position.dx + maxHorizontalDistance - 16),
-        top: iconOffsetY.clamp(room.position.dy, room.position.dy + maxVerticalDistance - 16),
+        left: iconOffsetX,
+        top: iconOffsetY,
         child: GestureDetector(
           onTap: () {
             setState(() {
@@ -145,6 +153,7 @@ class _SensorConfigurationPageState extends State<SensorConfigurationPage>
       );
     }).toList();
   }
+
 
   Widget _buildAddSensorTab() {
     return Column(
@@ -167,11 +176,17 @@ class _SensorConfigurationPageState extends State<SensorConfigurationPage>
                     ))
                 .toList(),
             onChanged: (value) {
-              setState(() {
-                selectedWall = value;
-              });
+              print("Wall changed to: $value"); // Debugging print statement
+              if (selectedWall != value) {
+                setState(() {
+                  selectedWall = value; 
+                });
+              }
             },
           ),
+
+
+
           Row(
             children: [
               Flexible(
@@ -196,11 +211,18 @@ class _SensorConfigurationPageState extends State<SensorConfigurationPage>
               if (selectedRoom != null &&
                   selectedWall != null &&
                   nameController.text.isNotEmpty) {
+                final feet = double.tryParse(distanceFeetController.text);
+                final inches = double.tryParse(distanceInchesController.text);
+
+                if (feet == null || inches == null || feet < 0 || inches < 0 || inches >= 12) {
+                  _showSnackBar('Invalid distance values. Feet must be >= 0 and Inches must be between 0 and 11.');
+                  return;
+                }
+
                 setState(() {
                   // Calculate the position of the sensor
                   Offset sensorPosition;
-                  double distanceInPixels = ((int.tryParse(distanceFeetController.text) ?? 0) * 10) +
-                      ((int.tryParse(distanceInchesController.text) ?? 0) / 12 * 10);
+                  double distanceInPixels = (feet * 10) + (inches / 12 * 10);
 
                   switch (selectedWall) {
                     case 'Top':
@@ -231,18 +253,34 @@ class _SensorConfigurationPageState extends State<SensorConfigurationPage>
                       sensorPosition = selectedRoom!.position; // Default to room's position
                   }
 
-                  selectedRoom!.sensors.add(Sensor(
-                    name: nameController.text,
-                    wall: selectedWall!,
-                    distanceFromWall: distanceInPixels / 10, // Convert back to feet
-                    position: sensorPosition,
-                  ));
+                  // Clamp the position to room boundaries
+                  double clampedX = sensorPosition.dx.clamp(
+                    selectedRoom!.position.dx,
+                    selectedRoom!.position.dx + (selectedRoom!.width * 10.0) - 16,
+                  );
+                  double clampedY = sensorPosition.dy.clamp(
+                    selectedRoom!.position.dy,
+                    selectedRoom!.position.dy + (selectedRoom!.height * 10.0) - 16,
+                  );
+
+                  selectedRoom!.sensors = [
+                    ...selectedRoom!.sensors,
+                    Sensor(
+                      name: nameController.text,
+                      wall: selectedWall!,
+                      distanceFromWall: distanceInPixels / 10, // Convert back to feet
+                      position: Offset(clampedX, clampedY), // Use clamped position
+                    ),
+                  ];
                 });
                 _resetInputs();
+              } else {
+                _showSnackBar('Please fill in all fields to add a sensor.');
               }
             },
             child: const Text('Add Sensor'),
           ),
+
 
         ] else ...[
           const Padding(
@@ -255,13 +293,25 @@ class _SensorConfigurationPageState extends State<SensorConfigurationPage>
     );
   }
 
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+
   Widget _buildManageSensorsTab() {
     return ListView(
       children: widget.rooms.expand((room) {
         return room.sensors.map((sensor) {
           return ListTile(
             title: Text(sensor.name),
-            subtitle: Text('${sensor.wall} wall, ${sensor.distanceFromWall.toStringAsFixed(2)} ft in room: ${room.name}'),
+            subtitle: Text(
+              '${sensor.wall} wall, ${sensor.distanceFromWall.toStringAsFixed(2)} ft',
+            ),
             tileColor: selectedSensor == sensor ? Colors.blue.withOpacity(0.2) : null,
             onTap: () {
               setState(() {
@@ -347,8 +397,17 @@ class _SensorConfigurationPageState extends State<SensorConfigurationPage>
             child: TabBarView(
               controller: _tabController,
               children: [
-                _buildAddSensorTab(),
-                _buildManageSensorsTab(),
+                  Builder(builder: (context) {
+                    if (selectedSensor == null) {
+                        _resetInputs(fullReset: true); // Only reset for new sensors
+                    }
+                    return _buildAddSensorTab();
+                  }),
+                  Builder(builder: (context) {
+                    selectedRoom = null;
+                    selectedSensor = null;
+                    return _buildManageSensorsTab();
+                  }),
               ],
             ),
           ),

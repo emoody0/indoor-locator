@@ -122,16 +122,11 @@ class _NewHouseSetupPageState extends State<NewHouseSetupPage> {
     if (existingHouseName != null) {
       for (var room in rooms) {
         room.houseName = existingHouseName;
-        final serializedSensors = room.sensors.map((sensor) => sensor.toJson()).toList();
 
         if (room.id == null) {
-          room.id = await db.insertRoom(room.copyWith(
-            sensors: serializedSensors.map((data) => Sensor.fromJson(data)).toList(),
-          ));
+          room.id = await db.insertRoom(room);
         } else {
-          await db.updateRoom(room.copyWith(
-            sensors: serializedSensors.map((data) => Sensor.fromJson(data)).toList(),
-          ));
+          await db.updateRoom(room);
         }
       }
       _showSnackBar('House "$existingHouseName" updated successfully!');
@@ -167,16 +162,22 @@ class _NewHouseSetupPageState extends State<NewHouseSetupPage> {
 
         for (var room in rooms) {
           room.houseName = nameController.text;
-          final serializedSensors = room.sensors.map((sensor) => sensor.toJson()).toList();
-
-          room.id = await db.insertRoom(room.copyWith(
-            sensors: serializedSensors.map((data) => Sensor.fromJson(data)).toList(),
-          ));
+          room.id = await db.insertRoom(room);
         }
         _showSnackBar('House "${nameController.text}" saved successfully!');
       } else {
         _showSnackBar('House name cannot be empty!');
       }
+    }
+  }
+
+  Future<bool> _onWillPop() async {
+    try {
+      await saveHouseToDatabase();
+      return true; // Allow navigation after saving
+    } catch (e) {
+      _showSnackBar('Failed to save the house. Please try again.');
+      return false; // Prevent navigation if saving fails
     }
   }
 
@@ -324,11 +325,6 @@ class _NewHouseSetupPageState extends State<NewHouseSetupPage> {
         ),
       ),
     );
-  }
-
-  Future<bool> _onWillPop() async {
-    await saveHouseToDatabase(); // Auto-save rooms and sensors
-    return true; // Allow navigation after saving
   }
 
 

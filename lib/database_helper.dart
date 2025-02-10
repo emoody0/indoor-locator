@@ -6,7 +6,7 @@ import 'dart:convert';
 class DatabaseHelper {
   static final DatabaseHelper _instance = DatabaseHelper._internal();
   factory DatabaseHelper() => _instance;
-  static const int _databaseVersion = 3; // Incremented to include users table
+  static const int _databaseVersion = 4; // Incremented to include users table
 
   static Database? _database;
 
@@ -22,7 +22,7 @@ class DatabaseHelper {
     String path = join(await getDatabasesPath(), 'house_setup.db');
     return await openDatabase(
       path,
-      version: 3, // Update the version number if you have schema changes
+      version: 4, // Update the version number if you have schema changes
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE rooms (
@@ -35,7 +35,8 @@ class DatabaseHelper {
             connectedWall TEXT,
             name TEXT,
             houseName TEXT,
-            groupId INTEGER
+            groupId INTEGER,
+            sensors TEXT DEFAULT "[]" -- Ensure sensors column exists from the start
           )
         ''');
 
@@ -48,27 +49,44 @@ class DatabaseHelper {
             sensorType TEXT
           )
         ''');
-      },
+
+        await db.execute('''
+          CREATE TABLE users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT,
+            email TEXT,
+            userType TEXT,
+            house TEXT,
+            organization TEXT
+          )
+        '''); 
+    },
+
       onUpgrade: (db, oldVersion, newVersion) async {
-        if (oldVersion < 3) {
-          await db.execute('ALTER TABLE rooms ADD COLUMN position TEXT');
-          await db.execute('''
-            CREATE TABLE IF NOT EXISTS sensors (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              houseName TEXT,
-              roomName TEXT,
-              position TEXT,
-              sensorType TEXT
-            )
-          ''');
+        if (oldVersion < 2) {
+            await db.execute('ALTER TABLE rooms ADD COLUMN houseName TEXT');
         }
-      },
+        if (oldVersion < 4) {
+            await db.execute('ALTER TABLE rooms ADD COLUMN sensors TEXT DEFAULT "[]"');
+            await db.execute('''
+              CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT,
+                email TEXT,
+                userType TEXT,
+                house TEXT,
+                organization TEXT
+              )
+            ''');
+        }
+    },
+
     );
   }
 
 
 
-  Future<void> _migrateDatabase(Database db, int oldVersion, int newVersion) async {
+  /*Future<void> _migrateDatabase(Database db, int oldVersion, int newVersion) async {
     print('Upgrading database from $oldVersion to $newVersion');
     if (oldVersion < 2) {
       await db.execute('ALTER TABLE rooms ADD COLUMN houseName TEXT');
@@ -86,24 +104,37 @@ class DatabaseHelper {
         )
       '''); // Create users table if it does not exist
     }
-  }
+  }*/
 
   // Room-related methods (untouched)
   Future<int> insertRoom(Room room) async {
     print('Updating room: ${room.toJson()}');
     final db = await database;
-    return await db.insert('rooms', room.toJson());
+    //return await db.insert('rooms', room.toJson());
+    return await db.insert(
+      'rooms',
+      room.toJson(),
+      conflictAlgorithm: ConflictAlgorithm.replace, // Ensures no duplicate insert issues
+    );
+
   }
 
   Future<int> updateRoom(Room room) async {
     print('Updating room: ${room.toJson()}');
     final db = await database;
+    /*return await db.update(
+      'rooms',
+      room.toJson(),
+      where: 'id = ?',
+      whereArgs: [room.id],
+    );*/
     return await db.update(
       'rooms',
       room.toJson(),
       where: 'id = ?',
       whereArgs: [room.id],
     );
+
   }
 
   Future<void> deleteHouseByName(String houseName) async {
@@ -125,10 +156,13 @@ class DatabaseHelper {
     );
   }
 
-  void clearDatabase() async {
+  Future<void> clearDatabase() async {
     final dbPath = join(await getDatabasesPath(), 'house_setup.db');
     await deleteDatabase(dbPath);
+    _database = null; // Reset cached database instance to avoid errors
   }
+
+
 
   Future<List<String>> getDistinctHouseNames() async {
     final db = await database;
