@@ -1,7 +1,34 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- The INTERNET permission is required for development. Specifically,
-         the Flutter tool needs it to communicate with the running application
-         to allow setting breakpoints, to provide hot reload, etc.
-    -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.example.g14_indoor_locator">
+
+    <!-- Required permissions -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+
+    <application
+        android:usesCleartextTraffic="true"
+        android:requestLegacyExternalStorage="true">
+
+        <!-- Enable OnBackInvokedCallback -->
+        <meta-data android:name="android:enableOnBackInvokedCallback" android:value="true" />
+
+        <!-- Firebase configuration -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="default_channel" />
+
+        <!-- Required by Firebase -->
+        <meta-data
+            android:name="flutter.opengles.version"
+            android:value="2" />
+
+
+        <activity
+            android:name=".MainActivity"
+            android:enableOnBackInvokedCallback="true">
+        </activity>
+
+
+    </application>
+
 </manifest>

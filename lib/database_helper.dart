@@ -2,6 +2,10 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'houses/room.dart';
 import 'dart:convert';
+import 'package:firebase_auth/firebase_auth.dart' as fb; 
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+
 
 class DatabaseHelper {
   static final DatabaseHelper _instance = DatabaseHelper._internal();
@@ -248,6 +252,57 @@ class DatabaseHelper {
     } else {
       print('Users table already exists.');
     }
+  }
+
+  Future<void> storeUserInDatabase(fb.User user) async {
+    final db = await DatabaseHelper().database;
+    final List<Map<String, dynamic>> existingUsers = await db.query(
+      'users',
+      where: 'email = ?',
+      whereArgs: [user.email],
+    );
+
+    if (existingUsers.isEmpty) {
+      String userType = user.email!.endsWith('@admin.com') ? 'Admin' : 'Resident';
+
+      // Save to SQLite
+      await db.insert('users', {
+        'name': user.displayName ?? 'Unknown',
+        'email': user.email,
+        'userType': userType,
+        'house': null,
+        'organization': 'Google Auth',
+      });
+
+      // Save to Firestore
+      DocumentReference userDoc = FirebaseFirestore.instance.collection('users').doc(user.uid);
+      await userDoc.set({
+        'name': user.displayName ?? 'Unknown',
+        'email': user.email,
+        'userType': userType,
+        'lastLogin': FieldValue.serverTimestamp(),
+      });
+
+      print("✅ User stored: ${user.email} as $userType");
+    } else {
+      print("⚠️ User already exists: ${user.email}");
+    }
+  }
+
+
+
+  Future<String?> getUserType(String email) async {
+    final db = await DatabaseHelper().database;
+    final List<Map<String, dynamic>> users = await db.query(
+      'users',
+      where: 'email = ?',
+      whereArgs: [email],
+    );
+
+    if (users.isNotEmpty) {
+      return users.first['userType']; // Return "Admin" or "Resident"
+    }
+    return null;
   }
 
 

@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "55535795649",
+    "project_id": "indoor-localization-7decb",
+    "storage_bucket": "indoor-localization-7decb.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:55535795649:android:22fe45365fa6e6c5b30340",
+        "android_client_info": {
+          "package_name": "com.example.g14_indoor_locator"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "55535795649-oeulae1m47ogf0a76pbp6vbdlrdf3ell.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.g14_indoor_locator",
+            "certificate_hash": "fc2c1d6eabe166913e6725a4362904f6b8e6428f"
+          }
+        },
+        {
+          "client_id": "55535795649-0um5ftca0t1a0t10eeji15tak0gn4k9e.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAyZQ-DSFRI9HawAqCpJET6EDqZK1FWDEM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "55535795649-0um5ftca0t1a0t10eeji15tak0gn4k9e.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "55535795649-5cfjjriblnf3qub7obpuqkn6ghkqh8kj.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.g14IndoorLocator"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
