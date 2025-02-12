@@ -26,12 +26,16 @@ class _ManageUsersPageState extends State<ManageUsersPage> {
   Future<void> _loadUsers() async {
     final fetchedUsers = await DatabaseService.fetchUsers();
     setState(() {
-      users = fetchedUsers;
-      selectedUserIndex = null;
+      users = fetchedUsers.map((user) {
+        user['id'] = user['id'].toString(); // Ensure UUIDs are stored as Strings
+        return user;
+      }).toList();
+      selectedUserIndex = null; // Reset selection
     });
   }
 
-  Future<void> _deleteUser(int id) async {
+
+  Future<void> _deleteUser(String id) async {
     await DatabaseService.deleteUser(id);
     _loadUsers();
     ScaffoldMessenger.of(context).showSnackBar(
@@ -60,7 +64,11 @@ class _ManageUsersPageState extends State<ManageUsersPage> {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 _buildActionButton(Icons.add, 'Add User', _addUser),
-                _buildActionButton(Icons.delete, 'Delete User', _confirmDeleteUser),
+                _buildActionButton(Icons.delete, 'Delete User', () {
+  final user = users[selectedUserIndex!];
+  _confirmDeleteUser(user['id'].toString()); // Ensure UUID is passed as String
+}),
+
                 _buildActionButton(Icons.edit, 'Edit User', _editUser),
                 _buildActionButton(Icons.info, 'View Details', _viewUser),
               ],
@@ -131,13 +139,23 @@ class _ManageUsersPageState extends State<ManageUsersPage> {
     _loadUsers();
   }
 
-  Future<void> _confirmDeleteUser() async {
-    final user = users[selectedUserIndex!];
-    final confirm = await _showDeleteConfirmation(user['name']);
-    if (confirm) {
-      _deleteUser(user['id']);
+  Future<void> _confirmDeleteUser(String id) async {
+    print('Attempting to delete user with UUID: $id'); // Debugging
+
+    try {
+      await DatabaseService.deleteUser(id);
+      await _loadUsers(); // Reload user list after deletion
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('User deleted successfully!')),
+      );
+    } catch (e) {
+      print('[ERROR] Failed to delete user: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to delete user: $e')),
+      );
     }
   }
+
 
   Future<void> _viewUser() async {
     final user = users[selectedUserIndex!];

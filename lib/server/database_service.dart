@@ -84,17 +84,18 @@ class DatabaseService {
   }
 
   /// **Delete a user**
-  static Future<void> deleteUser(int userId) async {
+  static Future<void> deleteUser(String userId) async {
     final conn = await MySqlConnection.connect(settings);
     try {
-      await conn.query('DELETE FROM Users WHERE id = ?', [userId]);
-      print('[SUCCESS] User deleted successfully');
+      await conn.query('DELETE FROM Users WHERE id = ?', [userId]); // UUID is String
+      print('[SUCCESS] User deleted successfully with UUID: $userId');
     } catch (e) {
       print('[ERROR] Failed to delete user: $e');
     } finally {
       await conn.close();
     }
   }
+
 
   // **HOUSE MANAGEMENT FUNCTIONS**
 
