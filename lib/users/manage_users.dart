@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import '../config.dart'; // Import config file
-import 'add_user.dart'; // Import the AddUserPage file
+import 'add_user.dart';
 import 'edit_user.dart';
 import 'view_user.dart';
-import '../database_helper.dart'; // Import DatabaseHelper for user data handling
+import 'package:g14_indoor_locator/server/database_service.dart';
 
 class ManageUsersPage extends StatefulWidget {
   const ManageUsersPage({super.key});
@@ -13,33 +13,27 @@ class ManageUsersPage extends StatefulWidget {
 }
 
 class _ManageUsersPageState extends State<ManageUsersPage> {
-  int? selectedUserIndex; // To hold the currently selected user
-  List<Map<String, dynamic>> users = []; // List to store user data
-  final DatabaseHelper dbHelper = DatabaseHelper(); // Database helper instance
+  int? selectedUserIndex;
+  List<Map<String, dynamic>> users = [];
+  final db = DatabaseService();
 
   @override
   void initState() {
     super.initState();
-    _initializeDatabase(); // Ensure the database is ready
+    _loadUsers();
   }
-
-  Future<void> _initializeDatabase() async {
-    await dbHelper.ensureUsersTableExists(); // Ensure the users table exists
-    _loadUsers(); // Load users after ensuring the table exists
-  }
-
 
   Future<void> _loadUsers() async {
-    final fetchedUsers = await dbHelper.getUsers();
+    final fetchedUsers = await DatabaseService.fetchUsers();
     setState(() {
       users = fetchedUsers;
-      selectedUserIndex = null; // Reset selection
+      selectedUserIndex = null;
     });
   }
 
   Future<void> _deleteUser(int id) async {
-    await dbHelper.deleteUser(id);
-    _loadUsers(); // Reload the user list after deletion
+    await DatabaseService.deleteUser(id);
+    _loadUsers();
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('User deleted successfully!')),
     );
@@ -50,115 +44,30 @@ class _ManageUsersPageState extends State<ManageUsersPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Manage Users'),
-        backgroundColor: AppColors.colorScheme.primary, // Use color from config
+        backgroundColor: AppColors.colorScheme.primary,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
-            Navigator.pop(context); // Back button functionality
+            Navigator.pop(context);
           },
         ),
       ),
       body: Column(
         children: <Widget>[
-          // Action buttons row
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                IconButton(
-                  icon: const Icon(Icons.add),
-                  onPressed: () async {
-                    await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const AddUserPage(),
-                      ),
-                    );
-                    _loadUsers(); // Reload the user list after adding a new user
-                  },
-                  tooltip: 'Add User',
-                ),
-                IconButton(
-                  icon: const Icon(Icons.delete),
-                  onPressed: selectedUserIndex != null
-                      ? () async {
-                          final user = users[selectedUserIndex!];
-                          final confirm = await showDialog<bool>(
-                            context: context,
-                            builder: (BuildContext context) {
-                              return AlertDialog(
-                                title: const Text('Confirm Delete'),
-                                content: Text('Are you sure you want to delete "${user['name']}"?'),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(context, false),
-                                    child: const Text('Cancel'),
-                                  ),
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(context, true),
-                                    child: const Text('Delete'),
-                                  ),
-                                ],
-                              );
-                            },
-                          );
-                          if (confirm == true) {
-                            _deleteUser(user['id']);
-                          }
-                        }
-                      : null, // Disable if no user is selected
-                  tooltip: 'Delete User',
-                ),
-                IconButton(
-                  icon: const Icon(Icons.edit),
-                  onPressed: selectedUserIndex != null
-                      ? () async {
-                          final user = users[selectedUserIndex!];
-                          await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => EditUserPage(
-                                id: user['id'], // Pass the user ID
-                                name: user['name'],
-                                email: user['email'],
-                                house: user['house'],
-                                userType: user['userType'],
-                              ),
-                            ),
-                          );
-                          _loadUsers(); // Reload the users after editing
-                        }
-                      : null, // Disable if no user is selected
-                  tooltip: 'Edit User',
-                ),
-                IconButton(
-                  icon: const Icon(Icons.info),
-                  onPressed: selectedUserIndex != null
-                      ? () {
-                          final user = users[selectedUserIndex!];
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => ViewUserPage(
-                                id: user['id'],
-                                name: user['name'],
-                                email: user['email'],
-                                house: user['house'],
-                                userType: user['userType'],
-                              ),
-                            ),
-                          );
-                        }
-                      : null, // Disable if no user is selected
-                  tooltip: 'View Details',
-                ),
+                _buildActionButton(Icons.add, 'Add User', _addUser),
+                _buildActionButton(Icons.delete, 'Delete User', _confirmDeleteUser),
+                _buildActionButton(Icons.edit, 'Edit User', _editUser),
+                _buildActionButton(Icons.info, 'View Details', _viewUser),
               ],
             ),
           ),
-          const Divider(), // Divider for visual separation
+          const Divider(),
 
-          // List of Users
           Expanded(
             child: users.isEmpty
                 ? const Center(child: Text('No users available.'))
@@ -174,14 +83,8 @@ class _ManageUsersPageState extends State<ManageUsersPage> {
                           groupValue: selectedUserIndex,
                           onChanged: (value) {
                             setState(() {
-                              selectedUserIndex = value; // Update selected user index
+                              selectedUserIndex = value;
                             });
-                          },
-                        ),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.more_vert),
-                          onPressed: () {
-                            // Additional options can be handled here
                           },
                         ),
                       );
@@ -192,5 +95,86 @@ class _ManageUsersPageState extends State<ManageUsersPage> {
       ),
     );
   }
-}
 
+  /// Helper function for action buttons
+  Widget _buildActionButton(IconData icon, String tooltip, VoidCallback onPressed) {
+    return IconButton(
+      icon: Icon(icon),
+      tooltip: tooltip,
+      onPressed: selectedUserIndex != null ? onPressed : null,
+    );
+  }
+
+  /// User Actions
+  Future<void> _addUser() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const AddUserPage()),
+    );
+    _loadUsers();
+  }
+
+  Future<void> _editUser() async {
+    final user = users[selectedUserIndex!];
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EditUserPage(
+          id: user['id'],
+          name: user['name'],
+          email: user['email'],
+          house: user['house'],
+          userType: user['userType'],
+        ),
+      ),
+    );
+    _loadUsers();
+  }
+
+  Future<void> _confirmDeleteUser() async {
+    final user = users[selectedUserIndex!];
+    final confirm = await _showDeleteConfirmation(user['name']);
+    if (confirm) {
+      _deleteUser(user['id']);
+    }
+  }
+
+  Future<void> _viewUser() async {
+    final user = users[selectedUserIndex!];
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ViewUserPage(
+          id: user['id'],
+          name: user['name'],
+          email: user['email'],
+          house: user['house'],
+          userType: user['userType'],
+        ),
+      ),
+    );
+  }
+
+  /// Confirm deletion dialog
+  Future<bool> _showDeleteConfirmation(String userName) async {
+    return await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Confirm Delete'),
+          content: Text('Are you sure you want to delete "$userName"?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    ) ?? false;
+  }
+}
