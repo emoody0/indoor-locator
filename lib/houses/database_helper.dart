@@ -1,118 +1,116 @@
-import 'package:sqflite/sqflite.dart';
-import 'package:path/path.dart';
+import 'package:g14_indoor_locator/server/database_service.dart';
+import 'package:mysql1/mysql1.dart';
 import 'room.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper _instance = DatabaseHelper._internal();
   factory DatabaseHelper() => _instance;
 
-  static Database? _database;
-
   DatabaseHelper._internal();
 
-  Future<Database> get database async {
-    if (_database != null) return _database!;
-    _database = await _initDatabase();
-    return _database!;
-  }
-
-  Future<Database> _initDatabase() async {
-    String path = join(await getDatabasesPath(), 'house_setup.db');
-    return await openDatabase(
-      path,
-      version: 2,
-      onCreate: (db, version) async {
-        await db.execute('''
-          CREATE TABLE rooms (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              position TEXT,
-              width REAL,
-              height REAL,
-              isGrouped INTEGER,
-              connectedRoom TEXT,
-              connectedWall TEXT,
-              name TEXT, -- Room name
-              houseName TEXT, -- House name
-              groupId INTEGER
-          )
-        ''');
-      },
-      onUpgrade: _migrateDatabase,
-    );
-  }
-
-
-  Future<void> _migrateDatabase(Database db, int oldVersion, int newVersion) async {
-    if (oldVersion < 2) {
-      await db.execute('ALTER TABLE rooms ADD COLUMN houseName TEXT');
+  /// Insert a room into the database
+  Future<int> insertRoom(Room room) async {
+    try {
+      await DatabaseService.insertData('rooms', room.toJson());
+      print('Inserted room: ${room.name}'); // Debug log
+      return 1; // Assuming success (MySQL doesn't return auto-increment IDs directly in this setup)
+    } catch (e) {
+      print('[ERROR] Failed to insert room: $e');
+      rethrow;
     }
   }
 
-  Future<int> insertRoom(Room room) async {
-    final db = await database;
-    int id = await db.insert('rooms', room.toJson());
-    print('Inserted room with ID: $id'); // Debug log
-    return id;
-  }
-
-
+  /// Delete a house by its name
   Future<void> deleteHouseByName(String houseName) async {
-    final db = await database;
-    print('Deleting house: $houseName'); // Debug log
-    await db.delete(
-      'rooms',
-      where: 'houseName = ?',
-      whereArgs: [houseName],
-    );
+    try {
+      await DatabaseService.deleteData('rooms', 'houseName = "$houseName"');
+      print('Deleted house: $houseName'); // Debug log
+    } catch (e) {
+      print('[ERROR] Failed to delete house: $e');
+      rethrow;
+    }
   }
 
-  
-
-
+  /// Update a room in the database
   Future<int> updateRoom(Room room) async {
-    final db = await database;
-    print('Updating room with ID: ${room.id}'); // Debug log
-    return await db.update(
-      'rooms',
-      room.toJson(),
-      where: 'id = ?',
-      whereArgs: [room.id],
-    );
+    try {
+      final query = '''
+        UPDATE rooms
+        SET position = ?, width = ?, height = ?, isGrouped = ?, connectedRoom = ?, connectedWall = ?, name = ?, houseName = ?, groupId = ?
+        WHERE id = ?
+      ''';
+      final conn = await MySqlConnection.connect(DatabaseService.settings);
+      await conn.query(query, [
+        room.position,
+        room.width,
+        room.height,
+        room.isGrouped ? 1 : 0,
+        room.connectedRoom,
+        room.connectedWall,
+        room.name,
+        room.houseName,
+        room.groupId,
+        room.id,
+      ]);
+      await conn.close();
+      print('Updated room with ID: ${room.id}'); // Debug log
+      return 1; // Assuming success
+    } catch (e) {
+      print('[ERROR] Failed to update room: $e');
+      rethrow;
+    }
   }
 
-
+  /// Delete a room by its ID
   Future<int> deleteRoom(int id) async {
-    final db = await database;
-    return await db.delete(
-      'rooms',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+    try {
+      await DatabaseService.deleteData('rooms', 'id = $id');
+      print('Deleted room with ID: $id'); // Debug log
+      return 1; // Assuming success
+    } catch (e) {
+      print('[ERROR] Failed to delete room: $e');
+      rethrow;
+    }
   }
 
+  /// Clear all rooms from the database
   Future<void> clearDatabase() async {
-    final db = await database;
-    await db.delete('rooms');
+    try {
+      await DatabaseService.deleteData('rooms', '1 = 1'); // Delete all rows
+      print('Cleared all rooms from the database'); // Debug log
+    } catch (e) {
+      print('[ERROR] Failed to clear database: $e');
+      rethrow;
+    }
   }
 
+  /// Get distinct house names from the database
   Future<List<String>> getDistinctHouseNames() async {
-    final db = await database;
-    final List<Map<String, dynamic>> result = await db.rawQuery('SELECT DISTINCT houseName FROM rooms WHERE houseName IS NOT NULL');
-    print('Distinct house names from DB: $result'); // Debug log
-    return result.map((row) => row['houseName'] as String).toList();
+    try {
+      final conn = await MySqlConnection.connect(DatabaseService.settings);
+      final results = await conn.query('SELECT DISTINCT houseName FROM rooms WHERE houseName IS NOT NULL');
+      await conn.close();
+      final houseNames = results.map((row) => row['houseName'] as String).toList();
+      print('Distinct house names from DB: $houseNames'); // Debug log
+      return houseNames;
+    } catch (e) {
+      print('[ERROR] Failed to fetch distinct house names: $e');
+      rethrow;
+    }
   }
 
-
+  /// Get rooms by house name
   Future<List<Room>> getRoomsByHouseName(String houseName) async {
-    final db = await database;
-    final List<Map<String, dynamic>> results = await db.query(
-      'rooms',
-      where: 'houseName = ?',
-      whereArgs: [houseName],
-    );
-    return results.map((json) => Room.fromJson(json)).toList();
+    try {
+      final conn = await MySqlConnection.connect(DatabaseService.settings);
+      final results = await conn.query('SELECT * FROM rooms WHERE houseName = ?', [houseName]);
+      await conn.close();
+      final rooms = results.map((row) => Room.fromJson(row.fields)).toList();
+      print('Fetched rooms for house: $houseName'); // Debug log
+      return rooms;
+    } catch (e) {
+      print('[ERROR] Failed to fetch rooms by house name: $e');
+      rethrow;
+    }
   }
-
-
-
 }

@@ -1,10 +1,8 @@
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'config.dart'; // Import the config file
 import 'resident.dart'; // Import Resident portal
 import 'admin.dart'; // Import Admin portal
-import '/server/database_service.dart';
 
 void main() {
   runApp(const MyApp());
