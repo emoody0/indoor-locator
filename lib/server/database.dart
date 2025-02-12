@@ -6,6 +6,10 @@ import 'package:path/path.dart';
 // Import sqflite_common_ffi for non-mobile platforms
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
+
+// I don't think this file is being used AT ALL 
+// Imma keep it for now though cause everything works :3
+
 class HomeAssistantDatabase {
   static final HomeAssistantDatabase _instance = HomeAssistantDatabase._internal();
   factory HomeAssistantDatabase() => _instance;
