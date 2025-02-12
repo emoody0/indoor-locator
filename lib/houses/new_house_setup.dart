@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'room_widget.dart';
 import 'room.dart';
-import 'database_helper.dart';
+import 'sensor.dart';
+import 'sensor_configuration.dart';
+import '../database_helper.dart';
 import 'dart:convert'; // For JSON encoding/decoding
 
 class NewHouseSetupPage extends StatefulWidget {
@@ -27,10 +29,8 @@ class _NewHouseSetupPageState extends State<NewHouseSetupPage> {
   @override
   void initState() {
     super.initState();
-    // Create a modifiable copy of the provided rooms list
     rooms = List<Room>.from(widget.rooms);
-    // Initialize title
-    title = widget.houseName ?? 'New House Setup'; // Use the house name if provided, otherwise default
+    title = widget.houseName ?? 'New House Setup';
   }
 
   void connectRooms(Room mainRoom, Room targetRoom, String wall, String alignment) {
@@ -46,7 +46,6 @@ class _NewHouseSetupPageState extends State<NewHouseSetupPage> {
       }
 
       Offset newPosition;
-
       switch (wall) {
         case 'left':
           newPosition = Offset(
@@ -85,7 +84,7 @@ class _NewHouseSetupPageState extends State<NewHouseSetupPage> {
           break;
 
         default:
-          return; // No snapping if wall is invalid
+          return;
       }
 
       mainRoom.position = newPosition;
@@ -105,41 +104,34 @@ class _NewHouseSetupPageState extends State<NewHouseSetupPage> {
   }
 
   void moveGroup(Room room, Offset delta) {
-    if (room.groupId != null) {
-      setState(() {
+    setState(() {
+      if (room.groupId != null) {
         for (Room groupedRoom in rooms.where((r) => r.groupId == room.groupId)) {
           groupedRoom.position += delta;
         }
-      });
-    } else {
-      setState(() {
+      } else {
         room.position += delta;
-      });
-    }
+      }
+    });
   }
 
-  void saveHouseToDatabase() async {
+  Future<void> saveHouseToDatabase() async {
     final db = DatabaseHelper();
-
     String? existingHouseName = rooms.isNotEmpty ? rooms.first.houseName : null;
 
-    if (existingHouseName != null && existingHouseName.isNotEmpty) {
-      print('Updating existing house: $existingHouseName');
+    if (existingHouseName != null) {
       for (var room in rooms) {
-        room.houseName = existingHouseName; // Ensure houseName is consistent
+        room.houseName = existingHouseName;
+
         if (room.id == null) {
           room.id = await db.insertRoom(room);
-          print('Inserted new room with ID: ${room.id}');
         } else {
-          print('Updating room with ID: ${room.id}');
           await db.updateRoom(room);
         }
       }
       _showSnackBar('House "$existingHouseName" updated successfully!');
     } else {
-      // Prompt for a new house name
       TextEditingController nameController = TextEditingController();
-
       await showDialog(
         context: context,
         builder: (BuildContext context) {
@@ -165,13 +157,12 @@ class _NewHouseSetupPageState extends State<NewHouseSetupPage> {
 
       if (nameController.text.isNotEmpty) {
         setState(() {
-          title = nameController.text; // Update title to reflect the saved house name
+          title = nameController.text;
         });
 
         for (var room in rooms) {
-          room.houseName = nameController.text; // Assign house name
-          room.id = await db.insertRoom(room); // Insert and save ID
-          print('Inserted new room with ID: ${room.id}'); // Debug log
+          room.houseName = nameController.text;
+          room.id = await db.insertRoom(room);
         }
         _showSnackBar('House "${nameController.text}" saved successfully!');
       } else {
@@ -179,6 +170,22 @@ class _NewHouseSetupPageState extends State<NewHouseSetupPage> {
       }
     }
   }
+
+  Future<bool> _onWillPop() async {
+    try {
+      await saveHouseToDatabase();
+      return true; // Allow navigation after saving
+    } catch (e) {
+      _showSnackBar('Failed to save the house. Please try again.');
+      return false; // Prevent navigation if saving fails
+    }
+  }
+
+
+
+
+
+
 
   void _showSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -189,82 +196,112 @@ class _NewHouseSetupPageState extends State<NewHouseSetupPage> {
     );
   }
 
-  void loadHouseFromDatabase() async {
-    final db = DatabaseHelper();
-    List<String> houseNames = await db.getDistinctHouseNames();
-
-    // Show dialog to select a house
-    String? selectedHouse = await showDialog<String>(
-      context: context,
-      builder: (BuildContext context) {
-        return SimpleDialog(
-          title: const Text('Select a House to Load'),
-          children: houseNames
-              .map((houseName) => SimpleDialogOption(
-                    onPressed: () {
-                      Navigator.pop(context, houseName);
-                    },
-                    child: Text(houseName),
-                  ))
-              .toList(),
+  Widget _buildSensorIcons(Room room) {
+    return Stack(
+      children: room.sensors.map((sensor) {
+        double iconOffsetX;
+        double iconOffsetY;
+        switch (sensor.wall) {
+          case 'Top':
+            iconOffsetX = room.position.dx + (sensor.distanceFromWall * scaleFactor);
+            iconOffsetY = room.position.dy + 2; // Close to top boundary
+            break;
+          case 'Bottom':
+            iconOffsetX = room.position.dx + (sensor.distanceFromWall * scaleFactor);
+            iconOffsetY = room.position.dy + (room.height * scaleFactor) - 18; // Close to bottom boundary
+            break;
+          case 'Left':
+            iconOffsetX = room.position.dx + 2; // Close to left boundary
+            iconOffsetY = room.position.dy + (sensor.distanceFromWall * scaleFactor);
+            break;
+          case 'Right':
+            iconOffsetX = room.position.dx + (room.width * scaleFactor) - 18; // Close to right boundary
+            iconOffsetY = room.position.dy + (sensor.distanceFromWall * scaleFactor);
+            break;
+          default:
+            iconOffsetX = room.position.dx;
+            iconOffsetY = room.position.dy;
+        }
+        return Positioned(
+          left: iconOffsetX,
+          top: iconOffsetY,
+          child: const Icon(
+            Icons.sensors,
+            size: 16,
+            color: Colors.red,
+          ),
         );
-      },
+      }).toList(),
     );
-
-    // Load rooms for the selected house
-    if (selectedHouse != null) {
-      List<Room> loadedRooms = await db.getRoomsByHouseName(selectedHouse);
-      setState(() {
-        rooms = loadedRooms;
-      });
-      print('Loaded house: $selectedHouse');
-    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(title), // Dynamic title
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.download),
-            onPressed: loadHouseFromDatabase,
-            tooltip: 'Load House',
-          ),
-        ],
-      ),
-      body: Stack(
-        children: [
-          ...rooms.map((room) {
-            return Positioned(
-              left: room.position.dx,
-              top: room.position.dy,
-              child: RoomWidget(
-                room: room,
-                rooms: rooms,
-                onConnect: (targetRoom, wall, alignment) {
-                  connectRooms(room, targetRoom, wall, alignment);
-                },
-                onUngroup: () {
-                  setState(() {
-                    room.isGrouped = false;
-                    room.connectedRoom = null;
-                    room.groupId = null;
-                  });
-                },
-                onMove: (delta) {
-                  moveGroup(room, delta);
-                },
-                onDelete: () => deleteRoom(room),
-              ),
-            );
-          }).toList(),
-          Positioned(
-            bottom: 20,
-            right: 20,
-            child: FloatingActionButton(
-              heroTag: null,
+    return WillPopScope(
+      onWillPop: _onWillPop, // Auto-save when navigating away
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(title),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.sensors_rounded),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => SensorConfigurationPage(rooms: rooms),
+                  ),
+                );
+              },
+              tooltip: 'Configure Sensors',
+            ),
+          ],
+        ),
+        body: Stack(
+          children: [
+            ...rooms.map((room) {
+              return Stack(
+                children: [
+                  Positioned(
+                    left: room.position.dx,
+                    top: room.position.dy,
+                    child: GestureDetector(
+                      onPanUpdate: (details) {
+                        setState(() {
+                          room.position += details.delta;
+                        });
+                      },
+                      child: RoomWidget(
+                        room: room,
+                        rooms: rooms,
+                        onConnect: (targetRoom, wall, alignment) {
+                          connectRooms(room, targetRoom, wall, alignment);
+                        },
+                        onUngroup: () {
+                          setState(() {
+                            room.isGrouped = false;
+                            room.connectedRoom = null;
+                            room.groupId = null;
+                          });
+                        },
+                        onMove: (delta) {
+                          moveGroup(room, delta);
+                        },
+                        onDelete: () => deleteRoom(room),
+                      ),
+                    ),
+                  ),
+                  _buildSensorIcons(room),
+                ],
+              );
+            }).toList(),
+          ],
+        ),
+        floatingActionButton: Column(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            FloatingActionButton(
+              heroTag: 'addRoomButton',
               onPressed: () {
                 setState(() {
                   rooms.add(Room(
@@ -277,19 +314,18 @@ class _NewHouseSetupPageState extends State<NewHouseSetupPage> {
               tooltip: 'Add Room',
               child: const Icon(Icons.add),
             ),
-          ),
-          Positioned(
-            bottom: 80,
-            right: 20,
-            child: FloatingActionButton(
-              heroTag: null,
+            const SizedBox(height: 10),
+            FloatingActionButton(
+              heroTag: 'saveHouseButton',
               onPressed: saveHouseToDatabase,
               tooltip: 'Save House',
               child: const Icon(Icons.save),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
+
+
 }

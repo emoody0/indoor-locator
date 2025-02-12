@@ -19,31 +19,82 @@ class ViewHousePage extends StatelessWidget {
             size: Size.infinite,
             painter: GridPainter(), // Grid painter for feet grid
           ),
-          // Add the rooms with an outline
+          // Add the rooms with an outline and their sensors
           ...rooms.map((room) {
-            return Positioned(
-              left: room.position.dx,
-              top: room.position.dy,
-              child: Container(
-                width: room.width * 10.0, // Scale width to pixels
-                height: room.height * 10.0, // Scale height to pixels
-                decoration: BoxDecoration(
-                  color: Colors.blueAccent,
-                  border: Border.all(color: Colors.black, width: 2.0), // Add black outline
-                ),
-                child: Center(
-                  child: Text(
-                    '${room.name}\n${room.width.toStringAsFixed(1)} ft x ${room.height.toStringAsFixed(1)} ft',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.white),
+            return Stack(
+              children: [
+                // Draw the room
+                Positioned(
+                  left: room.position.dx,
+                  top: room.position.dy,
+                  child: Container(
+                    width: room.width * 10.0, // Scale width to pixels
+                    height: room.height * 10.0, // Scale height to pixels
+                    decoration: BoxDecoration(
+                      color: Colors.blueAccent,
+                      border: Border.all(color: Colors.black, width: 2.0), // Add black outline
+                    ),
+                    child: Center(
+                      child: Text(
+                        '${room.name}\n${room.width.toStringAsFixed(1)} ft x ${room.height.toStringAsFixed(1)} ft',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                    ),
                   ),
                 ),
-              ),
+                // Add sensors for this room
+                ..._buildSensorIcons(room),
+              ],
             );
           }),
         ],
       ),
     );
+  }
+
+  /// Builds sensor icons for the room
+  List<Widget> _buildSensorIcons(Room room) {
+    return room.sensors.map((sensor) {
+      double iconOffsetX;
+      double iconOffsetY;
+
+      // Calculate sensor position based on its wall and distance from the wall
+      switch (sensor.wall) {
+        case 'Top':
+          iconOffsetX = room.position.dx + (sensor.distanceFromWall * 10.0);
+          iconOffsetY = room.position.dy + 2; // Close to top boundary
+          break;
+        case 'Bottom':
+          iconOffsetX = room.position.dx + (sensor.distanceFromWall * 10.0);
+          iconOffsetY = room.position.dy + (room.height * 10.0) - 18; // Close to bottom boundary
+          break;
+        case 'Left':
+          iconOffsetX = room.position.dx + 2; // Close to left boundary
+          iconOffsetY = room.position.dy + (sensor.distanceFromWall * 10.0);
+          break;
+        case 'Right':
+          iconOffsetX = room.position.dx + (room.width * 10.0) - 18; // Close to right boundary
+          iconOffsetY = room.position.dy + (sensor.distanceFromWall * 10.0);
+          break;
+        default:
+          iconOffsetX = room.position.dx;
+          iconOffsetY = room.position.dy;
+      }
+
+      return Positioned(
+        left: iconOffsetX,
+        top: iconOffsetY,
+        child: Tooltip(
+          message: sensor.name, // Display sensor name on hover/long press
+          child: const Icon(
+            Icons.sensors,
+            size: 16,
+            color: Colors.red, // Red icon for sensor
+          ),
+        ),
+      );
+    }).toList();
   }
 }
 

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../config.dart'; // Import config file
-import '../houses/database_helper.dart'; // Import database helper
-import '../houses/new_house_setup.dart'; // Import house setup page
+import '../database_helper.dart'; // Import database helper
+import 'new_house_setup.dart'; // Import house setup page
 import 'view_house_page.dart';
 import 'room.dart';
 
@@ -15,6 +15,7 @@ class ManageHousesPage extends StatefulWidget {
 class _ManageHousesPageState extends State<ManageHousesPage> {
   int? selectedHouseIndex; // To hold the currently selected house
   List<String> houseNames = []; // Store house names
+  final db = DatabaseHelper();
 
   @override
   void initState() {
@@ -65,7 +66,7 @@ class _ManageHousesPageState extends State<ManageHousesPage> {
                   onPressed: selectedHouseIndex != null
                       ? () async {
                           final selectedHouseName = houseNames[selectedHouseIndex!];
-                          final db = DatabaseHelper();
+                          //final db = DatabaseHelper();
                           final rooms = await db.getRoomsByHouseName(selectedHouseName);
                           Navigator.push(
                             context,
@@ -107,7 +108,7 @@ class _ManageHousesPageState extends State<ManageHousesPage> {
                   icon: const Icon(Icons.visibility),
                   onPressed: selectedHouseIndex != null
                       ? () async {
-                          final db = DatabaseHelper(); // Initialize the database helper
+                          // final db = DatabaseHelper(); // Initialize the database helper
                           final selectedHouseName = houseNames[selectedHouseIndex!]; // Get the selected house name
                           // Fetch rooms from the database
                           final List<Room> rooms = await db.getRoomsByHouseName(selectedHouseName); 
@@ -181,7 +182,7 @@ class _ManageHousesPageState extends State<ManageHousesPage> {
   }
 
   Future<void> _deleteHouse(String houseName) async {
-    final db = DatabaseHelper();
+    // final db = DatabaseHelper();
     await db.deleteHouseByName(houseName); // Delete the house from the database
     print('Deleted house: $houseName'); // Debug log
     await _loadHouses(); // Refresh the list of houses
@@ -189,7 +190,7 @@ class _ManageHousesPageState extends State<ManageHousesPage> {
   }
 
   Future<void> _loadHouses() async {
-    final db = DatabaseHelper();
+    // final db = DatabaseHelper();
     final names = await db.getDistinctHouseNames();
     setState(() {
       houseNames = names; // Refresh the list of house names
@@ -207,7 +208,7 @@ class _ManageHousesPageState extends State<ManageHousesPage> {
   }
 
   void _showHouseDetails(String houseName) async {
-    final db = DatabaseHelper();
+    // final db = DatabaseHelper();
     final rooms = await db.getRoomsByHouseName(houseName); // Fetch rooms
 
     // Prepare the room details in a tidy format

@@ -4,6 +4,7 @@ import 'settings.dart';
 import '../../log_view/view_logs.dart';
 import '../../log_view/view_alerts.dart';
 import '../../server/manage_sql_page.dart'; // Import the new SQL management page
+import '../../reports/reports.dart';
 
 class AdminPortal extends StatelessWidget {
   const AdminPortal({super.key});
@@ -73,14 +74,29 @@ class AdminPortal extends StatelessWidget {
                 );
               },
             ),
+            // New ListTile for managing client and server
             ListTile(
-              leading: const Icon(Icons.table_chart),
-              title: const Text('Manage SQL Tables'),
+              leading: const Icon(Icons.computer),
+              title: const Text('Manage Client/Server'),
               onTap: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const ManageSQLPage(),
+                    builder: (context) => const ManageClientServerPage(),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.analytics_outlined),
+              title: const Text('Reports'),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const ReportsPage(
+                      isAdmin: true,
+                    ),
                   ),
                 );
               },

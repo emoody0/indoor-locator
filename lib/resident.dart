@@ -3,6 +3,7 @@ import 'config.dart';
 import '../time_windows/default_time_settings.dart';
 import '../log_view/view_logs.dart';
 import '../log_view/view_alerts.dart';
+import '../reports/reports.dart';
 
 class ResidentPortal extends StatelessWidget {
   const ResidentPortal({super.key});
@@ -70,6 +71,20 @@ class ResidentPortal extends StatelessWidget {
                     builder: (context) => ViewAlertsPage(
                       key: UniqueKey(),
                       isAdmin: false, // No filtering options for residents
+                    ),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.analytics_outlined),
+              title: const Text('Reports'),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const ReportsPage(
+                      isAdmin: false,
                     ),
                   ),
                 );

@@ -38,6 +38,10 @@ dependencies:
   shelf: ^1.4.0
   shelf_router: ^1.0.1
   shelf_modular: ^1.0.0
+  workmanager: ^0.5.1
+  awesome_notifications: ^0.10.0
+
+
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../config.dart'; // Import config file
+import '../database_helper.dart';
 
 class AddUserPage extends StatefulWidget {
   const AddUserPage({super.key});
@@ -14,7 +15,21 @@ class _AddUserPageState extends State<AddUserPage> {
   final TextEditingController emailController = TextEditingController();
   String? selectedHouse; // Selected house
   bool isSaved = false; // Tracks if the user clicked the Save button
-  final List<String> houseOptions = ['House 1', 'House 2', 'House 3']; // Example house options
+  List<String> houseOptions = []; // Dynamic house options
+
+  @override
+  void initState() {
+    super.initState();
+    _loadHouseOptions(); // Load house options from the database
+  }
+
+  Future<void> _loadHouseOptions() async {
+    final db = DatabaseHelper();
+    final options = await db.getDistinctHouseNames(); // Fetch distinct house names
+    setState(() {
+      houseOptions = options; // Update the options
+    });
+  }
 
   bool isValidEmail(String email) {
     final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@gmail\.com$');
@@ -60,37 +75,41 @@ class _AddUserPageState extends State<AddUserPage> {
     return true; // Allow navigation if saved
   }
 
-  void _validateAndSave() {
+  void _validateAndSave() async {
     final name = nameController.text;
     final email = emailController.text;
 
     if (name.isEmpty || email.isEmpty || selectedHouse == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please fill in all fields.'),
-        ),
+        const SnackBar(content: Text('Please fill in all fields.')),
       );
     } else if (!isValidName(name)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Name should only contain alphabetic characters.'),
-        ),
+        const SnackBar(content: Text('Name should only contain alphabetic characters.')),
       );
     } else if (!isValidEmail(email)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Email must be a valid Gmail account (e.g., user@gmail.com).'),
-        ),
+        const SnackBar(content: Text('Email must be a valid Gmail account.')),
       );
     } else {
-      setState(() {
-        isSaved = true; // Mark as saved
+      final db = DatabaseHelper();
+      await db.insertUser({
+        'name': name,
+        'email': email,
+        'userType': userType,
+        'house': selectedHouse,
+        'organization': 'DefaultOrg', // Adjust as necessary
       });
+
+      setState(() {
+        isSaved = true;
+      });
+
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('User saved successfully!'),
-        ),
+        const SnackBar(content: Text('User saved successfully!')),
       );
+
+      Navigator.pop(context);
     }
   }
 
@@ -111,7 +130,7 @@ class _AddUserPageState extends State<AddUserPage> {
             },
           ),
         ),
-        body: SingleChildScrollView( // Add scroll view to prevent overflow
+        body: SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -192,11 +211,11 @@ class _AddUserPageState extends State<AddUserPage> {
                   });
                 },
               ),
-              if (selectedHouse == null)
+              if (selectedHouse == null && houseOptions.isEmpty)
                 const Padding(
                   padding: EdgeInsets.only(top: 8.0),
                   child: Text(
-                    'Please select a house',
+                    'No houses available. Please create a house first.',
                     style: TextStyle(color: Colors.red),
                   ),
                 ),
