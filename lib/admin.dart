@@ -74,15 +74,14 @@ class AdminPortal extends StatelessWidget {
                 );
               },
             ),
-            // New ListTile for managing client and server
             ListTile(
-              leading: const Icon(Icons.computer),
-              title: const Text('Manage Client/Server'),
+              leading: const Icon(Icons.table_chart),
+              title: const Text('Manage SQL Tables'),
               onTap: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const ManageClientServerPage(),
+                    builder: (context) => const ManageSQLPage(),
                   ),
                 );
               },
