@@ -2,7 +2,7 @@ import 'package:mysql1/mysql1.dart';
 import 'dart:convert'; // Required for utf8 decoding
 class DatabaseService {
   static final ConnectionSettings settings = ConnectionSettings(
-    host: 'homeassistant',
+    host: '192.168.242.63',
     port: 3306,
     user: 'homeassistant',
     password: 'SQL123!',
