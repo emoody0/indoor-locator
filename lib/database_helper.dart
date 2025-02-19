@@ -2,11 +2,13 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'houses/room.dart';
 import 'dart:convert';
+import 'package:intl/intl.dart';
+
 
 class DatabaseHelper {
   static final DatabaseHelper _instance = DatabaseHelper._internal();
   factory DatabaseHelper() => _instance;
-  static const int _databaseVersion = 4; // Incremented to include users table
+  static const int _databaseVersion = 5; // Incremented to include users table
 
   static Database? _database;
 
@@ -57,7 +59,10 @@ class DatabaseHelper {
             email TEXT,
             userType TEXT,
             house TEXT,
-            organization TEXT
+            organization TEXT,
+            start_window INTEGER DEFAULT 28800000,
+            end_window INTEGER DEFAULT 72000000,
+            is_default INTEGER DEFAULT 1
           )
         '''); 
     },
@@ -78,6 +83,11 @@ class DatabaseHelper {
                 organization TEXT
               )
             ''');
+        }
+        if (oldVersion < 5) {
+          await db.execute("ALTER TABLE users ADD COLUMN start_window INTEGER DEFAULT 28800000");
+          await db.execute("ALTER TABLE users ADD COLUMN end_window INTEGER DEFAULT 72000000");
+          await db.execute("ALTER TABLE users ADD COLUMN is_default INTEGER DEFAULT 1");
         }
     },
 
@@ -160,7 +170,9 @@ class DatabaseHelper {
     final dbPath = join(await getDatabasesPath(), 'house_setup.db');
     await deleteDatabase(dbPath);
     _database = null; // Reset cached database instance to avoid errors
+    print('Database cleared. Rebuilding...');
   }
+
 
 
 
@@ -186,26 +198,244 @@ class DatabaseHelper {
   Future<int> insertUser(Map<String, dynamic> user) async {
     print('Inserting user: $user');
     final db = await database;
+
+    // Ensure values are stored as integers
+    user['start_window'] = user['start_window'] is String
+        ? _timeToEpoch(user['start_window'])
+        : user['start_window'] ?? _timeToEpoch('8:00 AM');
+    
+    user['end_window'] = user['end_window'] is String
+        ? _timeToEpoch(user['end_window'])
+        : user['end_window'] ?? _timeToEpoch('8:00 PM');
+    
+    user['is_default'] = user['is_default'] ?? 1;
+
     return await db.insert('users', user);
   }
 
-  Future<List<Map<String, dynamic>>> getUsers() async {
-    final db = await database;
-    final List<Map<String, dynamic>> users = await db.query('users');
-    print('Retrieved users: $users');
-    return users;
+  
+  int _timeToEpoch(dynamic timeString) {
+    if (timeString is int) return timeString; // If already an int, return as is
+
+    try {
+        // Extract only the needed part (e.g., "8:00 AM" → "8", "00", "AM")
+        final match = RegExp(r'(\d{1,2}):(\d{2})\s*(AM|PM)').firstMatch(timeString.toString());
+
+        if (match == null) {
+            throw FormatException("Invalid time format: $timeString");
+        }
+
+        int hour = int.parse(match.group(1)!);
+        int minute = int.parse(match.group(2)!);
+        bool isPM = match.group(3) == 'PM';
+
+        // Convert 12-hour format to 24-hour format
+        if (isPM && hour != 12) {
+            hour += 12;
+        } else if (!isPM && hour == 12) {
+            hour = 0;
+        }
+
+        DateTime now = DateTime.now();
+        DateTime fullDateTime = DateTime(now.year, now.month, now.day, hour, minute);
+
+        return fullDateTime.millisecondsSinceEpoch;
+    } catch (e) {
+        print("ERROR parsing time: '$timeString' - ${e.toString()}");
+        return 28800000; // Default to 8:00 AM if parsing fails
+    }
   }
 
-  Future<int> updateUser(int id, Map<String, dynamic> user) async {
-    print('Updating user with ID $id: $user');
+
+
+
+  Future<List<Map<String, dynamic>>> getUsers() async {
     final db = await database;
+    List<Map<String, dynamic>> results = await db.query('users');
+
+    print("DEBUG: Retrieved all users from DB: $results");
+
+    return results.map((user) {
+        return {
+            ...user,
+            'start_window': user['start_window'] ?? 28800000, // Store as epoch
+            'end_window': user['end_window'] ?? 72000000,
+            'is_default': user['is_default'] ?? 1,
+        };
+    }).toList();
+  }
+
+  Future<Map<String, dynamic>?> getUserById(int userId) async {
+    final db = await database;
+    final List<Map<String, dynamic>> results = await db.query(
+        'users',
+        where: 'id = ?',
+        whereArgs: [userId],
+    );
+
+    if (results.isNotEmpty) {
+        print("DEBUG: Successfully retrieved user ID: $userId -> ${results.first}");
+        return results.first;
+    } else {
+        print("DEBUG: No user found with ID: $userId");
+        return null;
+    }
+  }
+
+
+
+
+
+  // Convert epoch (milliseconds) back to "HH:mm a"
+  String _epochToTime(dynamic epoch) {
+    if (epoch is String) {
+        epoch = int.tryParse(epoch) ?? 0;
+    }
+    
+    if (epoch == 0) return "00:00"; // Fallback if conversion fails
+
+    DateTime date = DateTime.fromMillisecondsSinceEpoch(epoch, isUtc: true).toLocal();
+    return DateFormat.Hm().format(date); // Convert to HH:mm format
+  }
+
+
+
+
+
+  Future<int> updateUser(int id, Map<String, dynamic> user) async {
+    final db = await database;
+
+    // Ensure time values are stored as integers (epoch timestamps)
+    user['start_window'] = user.containsKey('start_window') && user['start_window'] is String
+        ? _timeToEpoch(user['start_window'])
+        : _timeToEpoch('8:00 AM'); // Ensures it defaults to 8 AM only if missing
+
+    user['end_window'] = user.containsKey('end_window') && user['end_window'] is String
+        ? _timeToEpoch(user['end_window'])
+        : _timeToEpoch('8:00 PM'); // Ensures it defaults to 8 PM only if missing
+
+
     return await db.update('users', user, where: 'id = ?', whereArgs: [id]);
   }
+
 
   Future<int> deleteUser(int id) async {
     print('Deleting user with ID $id');
     final db = await database;
     return await db.delete('users', where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<void> updateAdminTimeWindow(int startWindow, int endWindow) async {
+    final db = await database;
+
+    // Ensure admin times are updated
+    await db.update(
+        'users',
+        {'start_window': startWindow, 'end_window': endWindow},
+        where: 'userType = ?',
+        whereArgs: ['Admin'],
+    );
+
+    // Update all users who still have the default time settings
+    int result = await db.update(
+        'users',
+        {'start_window': startWindow, 'end_window': endWindow},
+        where: 'is_default = 1 AND userType != "Admin"',
+    );
+
+    print("DEBUG: Admin updated time windows for $result users with is_default=1.");
+  }
+
+
+  Future<void> updateUserTimeWindow(int userId, dynamic startWindow, dynamic endWindow) async {
+    final db = await database;
+
+    final List<Map<String, dynamic>> userData = await db.query(
+        'users',
+        columns: ['userType', 'is_default'],
+        where: 'id = ?',
+        whereArgs: [userId],
+    );
+
+    if (userData.isNotEmpty) {
+        String userType = userData.first['userType'];
+        int isDefault = userData.first['is_default'];
+
+        // ✅ Admins must always have is_default = 1
+        if (userType == 'Admin') {
+            print("DEBUG: Admin (ID: $userId) is updating their own time. Ensuring is_default = 1.");
+
+            await db.update(
+                'users',
+                {
+                    'start_window': startWindow is int ? startWindow : _timeToEpoch(startWindow),
+                    'end_window': endWindow is int ? endWindow : _timeToEpoch(endWindow),
+                    'is_default': 1,  // ✅ Always keep Admin as default!
+                },
+                where: 'id = ?',
+                whereArgs: [userId],
+            );
+            return;
+        }
+
+        // ✅ If a regular user is modifying their time, set `is_default = 0`
+        if (isDefault == 1) {
+            print("DEBUG: User ID $userId is customizing their time. Changing is_default = 0.");
+        } else {
+            print("DEBUG: User ID $userId already has custom settings (is_default=0). Keeping as is.");
+        }
+    }
+
+    // 🚀 Update user time and set `is_default = 0` only if they were previously default
+    await db.update(
+        'users',
+        {
+            'start_window': startWindow is int ? startWindow : _timeToEpoch(startWindow),
+            'end_window': endWindow is int ? endWindow : _timeToEpoch(endWindow),
+            'is_default': 0,  // ✅ This only applies to regular users
+        },
+        where: 'id = ? AND is_default = 1',
+        whereArgs: [userId],
+    );
+
+    print("DEBUG: updateUserTimeWindow completed for user ID: $userId");
+  }
+
+
+  Future<void> verifyDatabaseUpdate(int userId) async {
+    final db = await database;
+    final result = await db.query('users', where: 'id = ?', whereArgs: [userId]);
+    print("DEBUG: Retrieved user after update: $result");
+  }
+
+  Future<void> revertToDefaultTimeWindow(int userId) async {
+    final db = await database;
+
+    // Get ANY admin's current time settings (since all admins should share the same default)
+    final List<Map<String, dynamic>> adminTime = await db.query(
+        'users',
+        columns: ['start_window', 'end_window'],
+        where: 'userType = "Admin"',
+        orderBy: 'id ASC',
+        limit: 1,
+    );
+
+    if (adminTime.isEmpty) {
+        print("DEBUG: No admin found. Cannot revert user ID $userId to default.");
+        return;
+    }
+
+    int defaultStart = adminTime.first['start_window'];
+    int defaultEnd = adminTime.first['end_window'];
+
+    int result = await db.update(
+        'users',
+        {'start_window': defaultStart, 'end_window': defaultEnd, 'is_default': 1},
+        where: 'id = ?',
+        whereArgs: [userId],
+    );
+
+    print("DEBUG: User ID $userId reverted to admin's default settings (Start: $defaultStart, End: $defaultEnd).");
   }
 
 

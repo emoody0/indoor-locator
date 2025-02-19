@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import '../config.dart'; // Import config file
 import 'configure_alert_windows.dart'; // Import the ConfigureAlertWindowsPage file
+import '../database_helper.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:intl/intl.dart';
 
 class DefaultTimeSettingsPage extends StatefulWidget {
   final bool isAdmin; // Parameter to determine if the user is an admin
@@ -14,10 +17,82 @@ class DefaultTimeSettingsPage extends StatefulWidget {
 class _DefaultTimeSettingsPageState extends State<DefaultTimeSettingsPage> {
   String? monitoringStartTime; // For monitoring start time
   String? monitoringEndTime; // For monitoring end time
-  String? selectedSensor; // For selected sensor (only for admin)
   int? reAlertMinutes; // For re-alert minutes
 
-  // Generate time options in 30-minute increments
+  @override
+  void initState() {
+    super.initState();
+    loadUserSettings();
+  }
+
+  Future<void> loadUserSettings() async {
+    final db = DatabaseHelper();
+    final prefs = await SharedPreferences.getInstance();
+    int userId = prefs.getInt('user_id') ?? -1;
+
+    print("DEBUG: Retrieved user_id from SharedPreferences: $userId");
+
+    if (userId == -1) {
+        print("DEBUG: User ID not found in SharedPreferences, attempting database lookup...");
+        List<Map<String, dynamic>> users = await db.getUsers();
+        if (users.isNotEmpty) {
+            userId = users.first['id'] ?? -1;
+            await prefs.setInt('user_id', userId);
+            print("DEBUG: Retrieved user_id from DB and saved: $userId");
+        } else {
+            print("DEBUG: No users found in the database.");
+            return;
+        }
+    }
+
+    List<Map<String, dynamic>> userData = await db.getUsers();
+    var user = userData.firstWhere((u) => u['id'] == userId, orElse: () => {});
+
+    if (user.isNotEmpty) {
+        print("DEBUG: Retrieved user settings from DB: $user");
+
+        int startWindow = user['start_window'] is int
+            ? user['start_window']
+            : _convertToInt(user['start_window']);
+
+        int endWindow = user['end_window'] is int
+            ? user['end_window']
+            : _convertToInt(user['end_window']);
+
+        print("DEBUG: Corrected StartWindow: $startWindow, EndWindow: $endWindow");
+
+        setState(() {
+            monitoringStartTime = _epochToTime(startWindow);
+            monitoringEndTime = _epochToTime(endWindow);
+        });
+
+        print("DEBUG: Updated UI with new settings - Start: $monitoringStartTime, End: $monitoringEndTime");
+    } else {
+        print("DEBUG: No user settings found for user ID $userId in database");
+    }
+  }
+
+
+
+
+// Utility function to safely convert values to integers
+  int _convertToInt(dynamic value) {
+    if (value is int) {
+        return value;  // If it's already an integer, return as is
+    } else if (value is String) {
+        int? parsedValue = int.tryParse(value);
+        if (parsedValue != null) {
+            return parsedValue;
+        }
+    }
+    print("WARNING: Unexpected data type for time value: $value (${value.runtimeType})");
+    return 0;  // Return 0 instead of 28800000 to avoid forcing an incorrect time
+  }
+
+
+
+
+
   List<String> generateTimeOptions() {
     List<String> times = [];
     for (int hour = 0; hour < 24; hour++) {
@@ -29,57 +104,113 @@ class _DefaultTimeSettingsPageState extends State<DefaultTimeSettingsPage> {
     return times;
   }
 
-  // Function to reset the time settings to default
-  void resetToDefaultSettings() {
-    setState(() {
-      // Here you can set the default times and settings
-      monitoringStartTime = "08:00"; // Example default start time
-      monitoringEndTime = "18:00";   // Example default end time
-      reAlertMinutes = 30;           // Example default re-alert time
-    });
-  }
+  Future<void> saveTimeWindow() async {
+    final db = DatabaseHelper();
+    final prefs = await SharedPreferences.getInstance();
+    int userId = prefs.getInt('user_id') ?? -1;
 
-  // Show confirmation dialog
-  void showResetConfirmationDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Revert to Default Settings'),
-          content: const Text(
-              'Are you sure? This will revert your time configuration settings to the settings predefined by your administrator.'),
-          actions: <Widget>[
-            TextButton(
-              child: const Text('No'),
-              onPressed: () {
-                Navigator.of(context).pop(); // Close the dialog
-              },
-            ),
-            TextButton(
-              child: const Text('Yes'),
-              onPressed: () {
-                resetToDefaultSettings(); // Reset the settings
-                Navigator.of(context).pop(); // Close the dialog
-              },
-            ),
-          ],
-        );
-      },
+    if (userId == -1) {
+        print("DEBUG: No valid user ID found for saving settings.");
+        return;
+    }
+
+    int startEpoch = _timeToEpoch(monitoringStartTime!);
+    int endEpoch = _timeToEpoch(monitoringEndTime!);
+
+    print("DEBUG: Attempting to update user time window - Start: $monitoringStartTime ($startEpoch), End: $monitoringEndTime ($endEpoch)");
+
+    await db.updateUserTimeWindow(userId, startEpoch, endEpoch);
+
+    // Remove old SharedPreferences values and set new ones
+    await prefs.setInt('start_window', startEpoch);
+    await prefs.setInt('end_window', endEpoch);
+
+    // Ensure UI updates immediately
+    setState(() {
+        monitoringStartTime = _epochToTime(startEpoch);
+        monitoringEndTime = _epochToTime(endEpoch);
+    });
+
+    // Delay before reloading from the database
+    await Future.delayed(const Duration(milliseconds: 500)); // Ensure DB transaction completes
+    await loadUserSettings();
+
+    print("DEBUG: Successfully updated and reloaded user settings.");
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Time settings updated successfully!')),
     );
   }
+
+
+  
+
+
+  Future<void> revertToDefault() async {
+    final db = DatabaseHelper();
+    final prefs = await SharedPreferences.getInstance();
+    int? userId = prefs.getInt('user_id');
+
+    print("DEBUG: Attempting to revert settings for user ID: $userId");
+
+    if (userId != null && userId != -1) {
+        await db.revertToDefaultTimeWindow(userId);
+        print("DEBUG: User reverted to default settings successfully");
+        await loadUserSettings();
+    } else {
+        print("DEBUG: Failed to revert settings - user ID not found, retrying fetch from DB");
+
+        // Fetch the first user from the database and retry
+        List<Map<String, dynamic>> users = await db.getUsers();
+        if (users.isNotEmpty) {
+            int newUserId = users.first['id'];
+            await prefs.setInt('user_id', newUserId);
+            print("DEBUG: Retrieved user_id from DB and saved: $newUserId");
+            await db.revertToDefaultTimeWindow(newUserId);
+            await loadUserSettings();
+        } else {
+            print("DEBUG: No user found in DB");
+        }
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Reverted to default settings')),
+    );
+  }
+
+
+  int _timeToEpoch(String time) {
+    List<String> parts = time.split(':');
+    int hour = int.parse(parts[0]);
+    int minute = int.parse(parts[1]);
+    DateTime now = DateTime.now();
+    return DateTime(now.year, now.month, now.day, hour, minute).millisecondsSinceEpoch;
+  }
+
+  String _epochToTime(int epoch) {
+    if (epoch == null) {
+        return "Invalid Time"; // Prevent crashes
+    }
+
+    DateTime date = DateTime.fromMillisecondsSinceEpoch(epoch, isUtc: true).toLocal();
+    String formattedTime = '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+    
+    print("DEBUG: Converted epoch $epoch to time string: $formattedTime");
+    return formattedTime;
+  }
+
+
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.isAdmin
-            ? 'Configure Default Time Windows'
-            : 'Configure Time Windows'),
+        title: Text(widget.isAdmin ? 'Configure Default Time Windows' : 'Configure Time Windows'),
         backgroundColor: AppColors.colorScheme.primary,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
-            Navigator.pop(context); // Back button functionality
+            Navigator.pop(context);
           },
         ),
       ),
@@ -88,18 +219,14 @@ class _DefaultTimeSettingsPageState extends State<DefaultTimeSettingsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            // Default Monitoring Time Window
-            const Text(
-              'Monitoring Time Window:',
-              style: TextStyle(fontSize: 18),
-            ),
+            const Text('Monitoring Time Window:', style: TextStyle(fontSize: 18)),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 DropdownButton<String>(
-                  value: monitoringStartTime,
-                  hint: const Text('Start Time'),
-                  items: generateTimeOptions().map<DropdownMenuItem<String>>((String value) {
+                  value: monitoringStartTime ?? generateTimeOptions().first,
+                  hint: const Text('Select Start Time'),
+                  items: generateTimeOptions().map((String value) {
                     return DropdownMenuItem<String>(
                       value: value,
                       child: Text(value),
@@ -109,13 +236,14 @@ class _DefaultTimeSettingsPageState extends State<DefaultTimeSettingsPage> {
                     setState(() {
                       monitoringStartTime = value;
                     });
+                    print("DEBUG: Start time changed to $monitoringStartTime");
                   },
                 ),
                 const Text('to'),
                 DropdownButton<String>(
-                  value: monitoringEndTime,
-                  hint: const Text('End Time'),
-                  items: generateTimeOptions().map<DropdownMenuItem<String>>((String value) {
+                  value: monitoringEndTime ?? generateTimeOptions().first,
+                  hint: const Text('Select End Time'),
+                  items: generateTimeOptions().map((String value) {
                     return DropdownMenuItem<String>(
                       value: value,
                       child: Text(value),
@@ -125,77 +253,20 @@ class _DefaultTimeSettingsPageState extends State<DefaultTimeSettingsPage> {
                     setState(() {
                       monitoringEndTime = value;
                     });
+                    print("DEBUG: End time changed to $monitoringEndTime");
                   },
                 ),
               ],
             ),
             const SizedBox(height: 20),
-
-            // Set Alert Windows for Spaces (Admin only)
-            if (widget.isAdmin) ...[
-              const Text('Set Alert Windows for Spaces:'),
-              ElevatedButton(
-                onPressed: () {
-                  // Navigate to ConfigureAlertWindowsPage
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const ConfigureAlertWindowsPage(),
-                    ),
-                  );
-                },
-                child: const Text('Set Alert Windows for Spaces'),
-              ),
-              const SizedBox(height: 20),
-            ],
-
-            // Re-alert Resident After
-            const Text('Re-alert Resident After:'),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.start,
-              children: [
-                DropdownButton<int>(
-                  value: reAlertMinutes,
-                  hint: const Text('Minutes'),
-                  items: List.generate(13, (index) {
-                    return DropdownMenuItem<int>(
-                      value: index * 5, // 5-minute increments
-                      child: Text('${index * 5} minutes'),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      reAlertMinutes = value;
-                    });
-                  },
-                ),
-              ],
+            ElevatedButton(
+              onPressed: saveTimeWindow,
+              child: const Text('Save'),
             ),
-            const SizedBox(height: 20),
             if (!widget.isAdmin) ...[
-              // Option to revert to default settings
               ElevatedButton(
-                onPressed: () {
-                  showResetConfirmationDialog(); // Show confirmation dialog
-                },
+                onPressed: revertToDefault,
                 child: const Text('Revert to Default Settings'),
-              ),
-              const SizedBox(height: 20),
-            ],
-            // Note about user privacy (for Residents)
-            if (!widget.isAdmin) ...[
-              const Divider(), // Divider for visual separation
-              const Text(
-                'Please note: For user privacy, you may configure your own time settings but cannot modify global settings.',
-                style: TextStyle(fontSize: 14, color: Colors.grey),
-                textAlign: TextAlign.center,
-              ),
-            ] else ...[
-              const Divider(), // Divider for visual separation
-              const Text(
-                'Please note: For user privacy, users may or may not configure their own time settings.',
-                style: TextStyle(fontSize: 14, color: Colors.grey),
-                textAlign: TextAlign.center,
               ),
             ],
           ],
