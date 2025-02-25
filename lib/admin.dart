@@ -3,6 +3,7 @@ import 'config.dart';
 import 'settings.dart';
 import '../../log_view/view_logs.dart';
 import '../../log_view/view_alerts.dart';
+import '../../server/mqtt.dart';
 import '../../server/manage_sql_page.dart'; // Import the new SQL management page
 
 class AdminPortal extends StatelessWidget {
@@ -69,6 +70,18 @@ class AdminPortal extends StatelessWidget {
                   context,
                   MaterialPageRoute(
                     builder: (context) => const SettingsPage(),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.computer),
+              title: const Text('Manage Client/Server'),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const ManageClientServerPage(),
                   ),
                 );
               },

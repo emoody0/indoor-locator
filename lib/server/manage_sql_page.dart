@@ -9,92 +9,57 @@ class ManageSQLPage extends StatefulWidget {
 }
 
 class _ManageSQLPageState extends State<ManageSQLPage> {
-  final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _userTypeController = TextEditingController();
-  final TextEditingController _houseIdController = TextEditingController();
-  final TextEditingController _houseNameController = TextEditingController();
+  final TextEditingController _tableNameController = TextEditingController();
+  final TextEditingController _fieldNameController = TextEditingController();
+  final TextEditingController _fieldValueController = TextEditingController();
+  final TextEditingController _deleteConditionController = TextEditingController();
 
   List<Map<String, dynamic>> _tableData = [];
   bool _isLoading = false;
-  String _status = 'Disconnected';
-  bool _isConnected = false;
-  String _selectedTable = 'Users'; // Default table selection
-  String? _selectedDeleteId;
 
-  @override
-  void initState() {
-    super.initState();
-    _checkDatabaseConnection();
-  }
+  /// Fetch and update table data
+  Future<void> _fetchTableData() async {
+    setState(() {
+      _isLoading = true;
+      _tableData = [];
+    });
 
-  /// Check database connection status
-  Future<void> _checkDatabaseConnection() async {
+    final tableName = _tableNameController.text.trim();
+    if (tableName.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a table name')),
+      );
+      setState(() => _isLoading = false);
+      return;
+    }
+
     try {
-      await DatabaseService.testConnection();
+      final data = await DatabaseService.fetchData(tableName);
       setState(() {
-        _status = 'Connected';
-        _isConnected = true;
+        _tableData = data;
       });
     } catch (e) {
-      setState(() {
-        _status = 'Disconnected';
-        _isConnected = false;
-      });
+      print('[ERROR] Failed to fetch table data: $e');
+    } finally {
+      setState(() => _isLoading = false);
     }
   }
 
-Future<void> _fetchTableData() async {
-  setState(() {
-    _isLoading = true;
-    _tableData = [];
-    _selectedDeleteId = null;
-  });
+  /// Insert data into the specified table
+  Future<void> _insertTableData() async {
+    final tableName = _tableNameController.text.trim();
+    final fieldName = _fieldNameController.text.trim();
+    final fieldValue = _fieldValueController.text.trim();
 
-  try {
-    final data = await DatabaseService.fetchData(_selectedTable);
-
-    // Convert house_id null values to display correctly
-    if (_selectedTable == 'Users') {
-      for (var user in data) {
-        if (user['house_id'] == null) {
-          user['house_id'] = 'No House';
-        }
-      }
-    }
-
-    setState(() {
-      _tableData = data;
-    });
-  } catch (e) {
-    print('[ERROR] Failed to fetch table data: $e');
-  } finally {
-    setState(() => _isLoading = false);
-  }
-}
-
-
-  /// Insert data into Users or Houses table
-  Future<void> _insertData() async {
-    Map<String, dynamic> data = {};
-
-    if (_selectedTable == 'Users') {
-      data = {
-        'name': _nameController.text.trim(),
-        'email': _emailController.text.trim(),
-        'userType': _userTypeController.text.trim(),
-        'house_id': _houseIdController.text.trim().isNotEmpty
-            ? int.parse(_houseIdController.text.trim())
-            : null,
-      };
-    } else if (_selectedTable == 'Houses') {
-      data = {
-        'name': _houseNameController.text.trim(),
-      };
+    if (tableName.isEmpty || fieldName.isEmpty || fieldValue.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill in all fields')),
+      );
+      return;
     }
 
     try {
-      await DatabaseService.insertData(_selectedTable, data);
+      await DatabaseService.insertData(tableName, {fieldName: fieldValue});
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Data inserted successfully')),
       );
@@ -106,17 +71,20 @@ Future<void> _fetchTableData() async {
     }
   }
 
-  /// Delete selected row
-  Future<void> _deleteSelectedRow() async {
-    if (_selectedDeleteId == null) {
+  /// Delete data from the specified table
+  Future<void> _deleteTableData() async {
+    final tableName = _tableNameController.text.trim();
+    final deleteCondition = _deleteConditionController.text.trim();
+
+    if (tableName.isEmpty || deleteCondition.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a row to delete')),
+        const SnackBar(content: Text('Please fill in the table name and condition')),
       );
       return;
     }
 
     try {
-      await DatabaseService.deleteData(_selectedTable, "id='$_selectedDeleteId'");
+      await DatabaseService.deleteData(tableName, deleteCondition);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Data deleted successfully')),
       );
@@ -132,140 +100,62 @@ Future<void> _fetchTableData() async {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Manage SQL Data'),
+        title: const Text('SQL Table Manager'),
         backgroundColor: Colors.blue,
       ),
       body: SingleChildScrollView(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                _buildConnectionIndicator(),
-                const SizedBox(height: 20),
-                _buildDropdownMenu(),
-                const SizedBox(height: 20),
-                _buildInputFields(),
-                const SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: _insertData,
-                  child: const Text('Insert Data'),
-                ),
-                const SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: _fetchTableData,
-                  child: const Text('Fetch Table Data'),
-                ),
-                const SizedBox(height: 20),
-                _buildDataTable(),
-                const SizedBox(height: 20),
-                _buildDeleteSection(),
-              ],
-            ),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildTextField(_tableNameController, 'Table Name'),
+              _buildButton('Fetch Table Data', _fetchTableData),
+              if (_isLoading) const Center(child: CircularProgressIndicator()),
+              if (_tableData.isNotEmpty) _buildDataTable(),
+
+              _buildTextField(_fieldNameController, 'Field Name'),
+              _buildTextField(_fieldValueController, 'Field Value'),
+              _buildButton('Insert Data', _insertTableData),
+
+              _buildTextField(_deleteConditionController, 'Delete Condition (e.g., id=1)'),
+              _buildButton('Delete Data', _deleteTableData),
+            ],
           ),
         ),
       ),
     );
   }
 
-  /// Build connection status indicator
-  Widget _buildConnectionIndicator() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        const Text('Status: ', style: TextStyle(fontSize: 24)),
-        Text(_status, style: const TextStyle(fontSize: 24)),
-        const SizedBox(width: 10),
-        Icon(Icons.circle, color: _isConnected ? Colors.green : Colors.red, size: 24),
-      ],
-    );
-  }
-
-  /// Dropdown menu for selecting Users or Houses table
-  Widget _buildDropdownMenu() {
-    return DropdownButton<String>(
-      value: _selectedTable,
-      items: <String>['Users', 'Houses'].map<DropdownMenuItem<String>>((String value) {
-        return DropdownMenuItem<String>(
-          value: value,
-          child: Text(value),
-        );
-      }).toList(),
-      onChanged: (String? newValue) {
-        setState(() {
-          _selectedTable = newValue!;
-          _fetchTableData();
-        });
-      },
-    );
-  }
-
-  /// Input fields for data insertion
-  Widget _buildInputFields() {
-    return Column(
-      children: [
-        if (_selectedTable == 'Users') ...[
-          _buildTextField(_nameController, 'Name'),
-          _buildTextField(_emailController, 'Email'),
-          _buildTextField(_userTypeController, 'User Type'),
-          _buildTextField(_houseIdController, 'House ID (optional)', isNumber: true),
-        ],
-        if (_selectedTable == 'Houses') ...[
-          _buildTextField(_houseNameController, 'House Name'),
-        ],
-      ],
-    );
-  }
-
-  /// Data table display with delete selection
-  Widget _buildDataTable() {
-    if (_tableData.isEmpty) {
-      return const Text('No data available');
-    }
-    return Column(
-      children: [
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: DataTable(
-            columns: _tableData.first.keys.map((key) => DataColumn(label: Text(key))).toList(),
-            rows: _tableData.map(
-              (row) => DataRow(
-                selected: _selectedDeleteId == row['id'].toString(),
-                onSelectChanged: (isSelected) {
-                  setState(() {
-                    _selectedDeleteId = isSelected! ? row['id'].toString() : null;
-                  });
-                },
-                cells: row.values.map((value) => DataCell(Text(value.toString()))).toList(),
-              ),
-            ).toList(),
-          ),
-        ),
-      ],
-    );
-  }
-
-  /// Delete button
-  Widget _buildDeleteSection() {
-    return ElevatedButton(
-      onPressed: _deleteSelectedRow,
-      child: const Text('Delete Selected Row'),
-    );
-  }
-
-  /// Helper for building text fields
-  Widget _buildTextField(TextEditingController controller, String label, {bool isNumber = false}) {
+  Widget _buildTextField(TextEditingController controller, String label) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        Text(label, style: const TextStyle(fontSize: 18)),
         TextField(
           controller: controller,
-          decoration: InputDecoration(labelText: label, border: OutlineInputBorder()),
-          keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+          decoration: InputDecoration(border: OutlineInputBorder(), labelText: label),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 20),
       ],
+    );
+  }
+
+  Widget _buildButton(String text, VoidCallback onPressed) {
+    return ElevatedButton(onPressed: onPressed, child: Text(text));
+  }
+
+  Widget _buildDataTable() {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: DataTable(
+        columns: _tableData.first.keys.map((key) => DataColumn(label: Text(key))).toList(),
+        rows: _tableData.map(
+          (row) => DataRow(
+            cells: row.values.map((value) => DataCell(Text(value.toString()))).toList(),
+          ),
+        ).toList(),
+      ),
     );
   }
 }

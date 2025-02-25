@@ -37,27 +37,28 @@ class DatabaseService {
     }
   }
 
-static Future<void> insertData(String tableName, Map<String, dynamic> data) async {
-  final conn = await MySqlConnection.connect(settings);
-  try {
-    // Remove 'id' from the insert data if it exists (handled by AUTO_INCREMENT)
-    data.remove('id');
+  /// Insert data into a table (Auto-generate UUID for 'id')
+  static Future<void> insertData(String tableName, Map<String, dynamic> data) async {
+    final conn = await MySqlConnection.connect(settings);
+    try {
+      // Ensure 'id' is generated as a UUID
+      if (!data.containsKey('id')) {
+        data['id'] = await _generateUUID(conn);
+      }
 
-    var fields = data.keys.join(', ');
-    var placeholders = data.keys.map((_) => '?').join(', ');
-    var values = data.values.toList();
-    var query = 'INSERT INTO $tableName ($fields) VALUES ($placeholders)';
+      var fields = data.keys.join(', ');
+      var placeholders = data.keys.map((_) => '?').join(', ');
+      var values = data.values.toList();
+      var query = 'INSERT INTO $tableName ($fields) VALUES ($placeholders)';
 
-    await conn.query(query, values);
-    print('[SUCCESS] Data inserted successfully into table: $tableName');
-  } catch (e) {
-    print('[ERROR] Failed to insert data: $e');
-  } finally {
-    await conn.close();
+      await conn.query(query, values);
+      print('[SUCCESS] Data inserted successfully into table: $tableName');
+    } catch (e) {
+      print('[ERROR] Failed to insert data: $e');
+    } finally {
+      await conn.close();
+    }
   }
-}
-
-
 
   /// Delete data from a table based on condition
   static Future<void> deleteData(String tableName, String condition) async {
