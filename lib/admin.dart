@@ -5,6 +5,7 @@ import '../../log_view/view_logs.dart';
 import '../../log_view/view_alerts.dart';
 import '../../server/manage_sql_page.dart'; // Import the new SQL management page
 import '../../reports/reports.dart';
+import '../../server/mqtt.dart'; // This should export your MQTTPage widget
 
 class AdminPortal extends StatelessWidget {
   const AdminPortal({super.key});
@@ -96,6 +97,19 @@ class AdminPortal extends StatelessWidget {
                     builder: (context) => const ReportsPage(
                       isAdmin: true,
                     ),
+                  ),
+                );
+              },
+            ),
+            // MQTT Page Menu Item
+            ListTile(
+              leading: const Icon(Icons.network_wifi),
+              title: const Text('MQTT Data'),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const MQTTPage(),
                   ),
                 );
               },
