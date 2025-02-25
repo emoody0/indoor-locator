@@ -81,7 +81,7 @@ class AdminPortal extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const ManageClientServerPage(),
+                    builder: (context) => const MQTTPage(),
                   ),
                 );
               },

@@ -3,30 +3,21 @@ import 'package:mqtt_client/mqtt_client.dart';
 import 'package:mqtt_client/mqtt_server_client.dart';
 import 'dart:convert'; // For JSON encoding
 
-class ManageClientServerPage extends StatefulWidget {
-  const ManageClientServerPage({super.key});
+class MQTTPage extends StatefulWidget {
+  const MQTTPage({super.key});
 
   @override
-  _ManageClientServerPageState createState() => _ManageClientServerPageState();
+  _MQTTPageState createState() => _MQTTPageState();
 }
 
-class _ManageClientServerPageState extends State<ManageClientServerPage> {
+class _MQTTPageState extends State<MQTTPage> {
   MqttServerClient? client;
   String status = 'Disconnected';
-  String selectedTopic = 'users'; // Default topic
   bool isConnected = false; // To track connection status (for green/red light)
 
-  // Controllers for input fields
-  final TextEditingController _topicController = TextEditingController();
-  final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _houseController = TextEditingController();
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _permissionsController = TextEditingController();
-  final TextEditingController _monitoringWindowController = TextEditingController();
+  // Controllers for sensor data input fields
   final TextEditingController _sensorIdController = TextEditingController();
   final TextEditingController _angleOfArrivalController = TextEditingController();
-  final TextEditingController _alertMessageController = TextEditingController();
-  String _selectedDataType = 'User Data'; // Data type selector
 
   @override
   void initState() {
@@ -40,7 +31,9 @@ class _ManageClientServerPageState extends State<ManageClientServerPage> {
       isConnected = false;
     });
 
-    client = MqttServerClient.withPort('192.168.56.1', 'flutter_client', 1883);
+    // Generate a unique client ID
+    String clientId = 'flutter_client_${DateTime.now().millisecondsSinceEpoch}';
+    client = MqttServerClient.withPort('192.168.96.63', clientId, 1883);
     client!.logging(on: true);
     client!.keepAlivePeriod = 60;
     client!.onConnected = onConnected;
@@ -51,7 +44,7 @@ class _ManageClientServerPageState extends State<ManageClientServerPage> {
     client!.pongCallback = pong;
 
     final connMess = MqttConnectMessage()
-        .authenticateAs("username", "password")
+        .authenticateAs("flutter_client", "flutter_client!")
         .withWillTopic('willtopic')
         .withWillMessage('My Will message')
         .startClean()
@@ -63,6 +56,7 @@ class _ManageClientServerPageState extends State<ManageClientServerPage> {
     } catch (e) {
       print('Exception: $e');
       client!.disconnect();
+      return;
     }
   }
 
@@ -111,35 +105,22 @@ class _ManageClientServerPageState extends State<ManageClientServerPage> {
   }
 
   // Method to publish a message to the MQTT broker as a JSON object
-void publishMessage(String topic, Map<String, dynamic> messageData) {
-  final builder = MqttClientPayloadBuilder();
-  builder.addString(jsonEncode(messageData)); // Encode message as JSON
+  void publishMessage(String topic, Map<String, dynamic> messageData) {
+    final builder = MqttClientPayloadBuilder();
+    builder.addString(jsonEncode(messageData)); // Encode message as JSON
 
-  if (client?.connectionStatus?.state == MqttConnectionState.connected) {
-    client!.publishMessage(topic, MqttQos.atLeastOnce, builder.payload!, retain: true);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Message published')),
-    );
-    print('Message published to $topic: ${jsonEncode(messageData)}');
-  } else {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Unable to publish, not connected')),
-    );
-    print('Not connected, unable to publish message');
-  }
-}
-
-
-  // Method to publish user data from input fields
-  void publishUserData() {
-      Map<String, dynamic> userData = {
-      "name": _nameController.text,
-      "house": _houseController.text,
-      "email": _emailController.text,
-      "permissions": _permissionsController.text,
-      "monitoring_window": _monitoringWindowController.text
-    };
-    publishMessage('Users', userData);
+    if (client?.connectionStatus?.state == MqttConnectionState.connected) {
+      client!.publishMessage(topic, MqttQos.atLeastOnce, builder.payload!, retain: true);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Message published')),
+      );
+      print('Message published to $topic: ${jsonEncode(messageData)}');
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Unable to publish, not connected')),
+      );
+      print('Not connected, unable to publish message');
+    }
   }
 
   // Method to publish sensor data from input fields
@@ -147,20 +128,10 @@ void publishMessage(String topic, Map<String, dynamic> messageData) {
     Map<String, dynamic> sensorData = {
       "sensor_id": _sensorIdController.text,
       "time": DateTime.now().toIso8601String(),
-      "data": {"Example of Sensor data": 23.5}, // Example static value; can be changed if needed
+      "data": {"Example of Sensor data": 23.5}, // Example static value; adjust as needed
       "angle_of_arrival": int.tryParse(_angleOfArrivalController.text) ?? 0
     };
     publishMessage('Sensors', sensorData);
-  }
-
-  // Method to publish an alert from input fields
-  void publishAlert() {
-    Map<String, dynamic> alertData = {
-      "severity": "high", // This can be made dynamic too if needed
-      "message": _alertMessageController.text,
-      "timestamp": DateTime.now().toIso8601String()
-    };
-     publishMessage('Alerts', alertData);
   }
 
   // Build connection status indicator (red for disconnected, green for connected)
@@ -173,13 +144,13 @@ void publishMessage(String topic, Map<String, dynamic> messageData) {
           style: TextStyle(fontSize: 24),
         ),
         Text(
-          status, // Display connection status text
+          status,
           style: const TextStyle(fontSize: 24),
         ),
         const SizedBox(width: 10),
         Icon(
           Icons.circle,
-          color: status == 'Connected' ? Colors.green : Colors.red, // Green if connected, red if not
+          color: isConnected ? Colors.green : Colors.red,
           size: 24,
         ),
       ],
@@ -190,7 +161,7 @@ void publishMessage(String topic, Map<String, dynamic> messageData) {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Manage Client/Server'),
+        title: const Text('MQTT Sensor Data Manager'),
         backgroundColor: Colors.blue,
       ),
       body: SingleChildScrollView(
@@ -200,138 +171,42 @@ void publishMessage(String topic, Map<String, dynamic> messageData) {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
-                Text(
-                  'Connection Status: $status',
-                  style: const TextStyle(fontSize: 20),
-                ),
-                const SizedBox(height: 10),
-                // Green/Red light indicator for connection status
-                Container(
-                  width: 16,
-                  height: 16,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: isConnected ? Colors.green : Colors.red,
-                  ),
-                ),
+                _buildConnectionIndicator(),
                 const SizedBox(height: 20),
-                DropdownButton<String>(
-                  value: _selectedDataType,
-                  items: <String>['User Data', 'Sensor Data', 'Alert']
-                      .map<DropdownMenuItem<String>>((String value) {
-                    return DropdownMenuItem<String>(
-                      value: value,
-                      child: Text(value),
-                    );
-                  }).toList(),
-                  onChanged: (String? newValue) {
-                    setState(() {
-                      _selectedDataType = newValue!;
-                    });
-                  },
+                // Input field for sensor ID
+                TextField(
+                  controller: _sensorIdController,
+                  decoration: const InputDecoration(
+                    labelText: 'Sensor ID',
+                    border: OutlineInputBorder(),
+                  ),
+                  style: const TextStyle(fontSize: 14),
                 ),
-                const SizedBox(height: 20),
-                // Input fields for user data
-                if (_selectedDataType == 'User Data') ...[
-                  TextField(
-                    controller: _nameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Name',
-                      border: OutlineInputBorder(),
-                    ),
-                    style: const TextStyle(fontSize: 14),
+                const SizedBox(height: 8),
+                // Input field for angle of arrival
+                TextField(
+                  controller: _angleOfArrivalController,
+                  decoration: const InputDecoration(
+                    labelText: 'Angle of Arrival',
+                    border: OutlineInputBorder(),
                   ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _houseController,
-                    decoration: const InputDecoration(
-                      labelText: 'House',
-                      border: OutlineInputBorder(),
-                    ),
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _emailController,
-                    decoration: const InputDecoration(
-                      labelText: 'Email',
-                      border: OutlineInputBorder(),
-                    ),
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _permissionsController,
-                    decoration: const InputDecoration(
-                      labelText: 'Permissions',
-                      border: OutlineInputBorder(),
-                    ),
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _monitoringWindowController,
-                    decoration: const InputDecoration(
-                      labelText: 'Monitoring Window',
-                      border: OutlineInputBorder(),
-                    ),
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                ],
-                // Input fields for sensor data
-                if (_selectedDataType == 'Sensor Data') ...[
-                  TextField(
-                    controller: _sensorIdController,
-                    decoration: const InputDecoration(
-                      labelText: 'Sensor ID',
-                      border: OutlineInputBorder(),
-                    ),
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _angleOfArrivalController,
-                    decoration: const InputDecoration(
-                      labelText: 'Angle of Arrival',
-                      border: OutlineInputBorder(),
-                    ),
-                    keyboardType: TextInputType.number,
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                ],
-                // Input field for alerts
-                if (_selectedDataType == 'Alert') ...[
-                  TextField(
-                    controller: _alertMessageController,
-                    decoration: const InputDecoration(
-                      labelText: 'Alert Message',
-                      border: OutlineInputBorder(),
-                    ),
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                ],
+                  keyboardType: TextInputType.number,
+                  style: const TextStyle(fontSize: 14),
+                ),
                 const SizedBox(height: 20),
                 ElevatedButton(
-                  onPressed: () {
-                    if (_selectedDataType == 'User Data') {
-                      publishUserData();
-                    } else if (_selectedDataType == 'Sensor Data') {
-                      publishSensorData();
-                    } else if (_selectedDataType == 'Alert') {
-                      publishAlert();
+                  onPressed: publishSensorData,
+                  child: const Text('Publish Sensor Data'),
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (status == 'Disconnected') {
+                      connectToBroker(); // Attempt to reconnect if disconnected
                     }
                   },
-                  child: const Text('Publish Data'),
+                  child: const Text('Reconnect'),
                 ),
-                const SizedBox(height: 20),
-                ElevatedButton(
-                onPressed: () async {
-                if (status == 'Disconnected') {
-                  connectToBroker(); // Attempt to reconnect if disconnected
-                }
-              },
-              child: const Text('Reconnect'),
-            ),
               ],
             ),
           ),
