@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart'; // Import for DateFormat
 import '../config.dart'; // Import config file
+import '../database_helper.dart';
 
 class ViewUserPage extends StatelessWidget {
   final int id; // User ID
@@ -7,6 +9,8 @@ class ViewUserPage extends StatelessWidget {
   final String email;
   final String house;
   final String userType; // Admin or User
+  final int startWindow;
+  final int endWindow;
 
   const ViewUserPage({
     super.key,
@@ -15,6 +19,8 @@ class ViewUserPage extends StatelessWidget {
     required this.email,
     required this.house,
     required this.userType,
+    required this.startWindow,
+    required this.endWindow,
   });
 
   @override
@@ -41,62 +47,38 @@ class ViewUserPage extends StatelessWidget {
             ),
             const SizedBox(height: 20),
 
-            // Display ID
-            const Text(
-              'User ID',
-              style: TextStyle(fontSize: 18),
-            ),
-            Text(
-              id.toString(), // Display user ID
-              style: const TextStyle(fontSize: 16, color: Colors.black54),
-            ),
-            const SizedBox(height: 20),
-
-            // Display User Type
-            const Text(
-              'User Type',
-              style: TextStyle(fontSize: 18),
-            ),
-            Text(
-              userType, // Display user type
-              style: const TextStyle(fontSize: 16, color: Colors.black54),
-            ),
-            const SizedBox(height: 20),
-
-            // Display Name
-            const Text(
-              'Name',
-              style: TextStyle(fontSize: 18),
-            ),
-            Text(
-              name, // Display user name
-              style: const TextStyle(fontSize: 16, color: Colors.black54),
-            ),
-            const SizedBox(height: 20),
-
-            // Display Email
-            const Text(
-              'Email',
-              style: TextStyle(fontSize: 18),
-            ),
-            Text(
-              email, // Display email
-              style: const TextStyle(fontSize: 16, color: Colors.black54),
-            ),
-            const SizedBox(height: 20),
-
-            // Display House
-            const Text(
-              'House',
-              style: TextStyle(fontSize: 18),
-            ),
-            Text(
-              house, // Display house
-              style: const TextStyle(fontSize: 16, color: Colors.black54),
-            ),
+            _buildDetailRow('User ID', id.toString()),
+            _buildDetailRow('User Type', userType),
+            _buildDetailRow('Name', name),
+            _buildDetailRow('Email', email),
+            _buildDetailRow('House', house),
+            _buildDetailRow('Start Window', _epochToTime(startWindow)),
+            _buildDetailRow('End Window', _epochToTime(endWindow)),
           ],
         ),
       ),
     );
   }
+
+  // Helper method to display user details
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          Text(value, style: const TextStyle(fontSize: 16, color: Colors.black54)),
+        ],
+      ),
+    );
+  }
+
+  // Convert epoch time to human-readable format
+  String _epochToTime(int epoch) {
+    DateTime date = DateTime.fromMillisecondsSinceEpoch(epoch, isUtc: true).toLocal();
+    return DateFormat.Hm().format(date);
+  }
+
+
 }

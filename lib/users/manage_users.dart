@@ -63,14 +63,95 @@ class _ManageUsersPageState extends State<ManageUsersPage> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _buildActionButton(Icons.add, 'Add User', _addUser),
-                _buildActionButton(Icons.delete, 'Delete User', () {
-  final user = users[selectedUserIndex!];
-  _confirmDeleteUser(user['id'].toString()); // Ensure UUID is passed as String
-}),
-
-                _buildActionButton(Icons.edit, 'Edit User', _editUser),
-                _buildActionButton(Icons.info, 'View Details', _viewUser),
+                IconButton(
+                  icon: const Icon(Icons.add),
+                  onPressed: () async {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const AddUserPage(),
+                      ),
+                    );
+                    _loadUsers(); // Reload the user list after adding a new user
+                  },
+                  tooltip: 'Add User',
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete),
+                  onPressed: selectedUserIndex != null
+                      ? () async {
+                          final user = users[selectedUserIndex!];
+                          final confirm = await showDialog<bool>(
+                            context: context,
+                            builder: (BuildContext context) {
+                              return AlertDialog(
+                                title: const Text('Confirm Delete'),
+                                content: Text('Are you sure you want to delete "${user['name']}"?'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context, false),
+                                    child: const Text('Cancel'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context, true),
+                                    child: const Text('Delete'),
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+                          if (confirm == true) {
+                            _deleteUser(user['id']);
+                          }
+                        }
+                      : null, // Disable if no user is selected
+                  tooltip: 'Delete User',
+                ),
+                IconButton(
+                  icon: const Icon(Icons.edit),
+                  onPressed: selectedUserIndex != null
+                      ? () async {
+                          final user = users[selectedUserIndex!];
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => EditUserPage(
+                                id: user['id'], // Pass the user ID
+                                name: user['name'],
+                                email: user['email'],
+                                house: user['house'],
+                                userType: user['userType'],
+                              ),
+                            ),
+                          );
+                          _loadUsers(); // Reload the users after editing
+                        }
+                      : null, // Disable if no user is selected
+                  tooltip: 'Edit User',
+                ),
+                IconButton(
+                  icon: const Icon(Icons.info),
+                  onPressed: selectedUserIndex != null
+                      ? () {
+                          final user = users[selectedUserIndex!];
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ViewUserPage(
+                                id: user['id'],
+                                name: user['name'],
+                                email: user['email'],
+                                house: user['house'],
+                                userType: user['userType'],
+                                startWindow: user['start_window'] is int ? user['start_window'] : int.tryParse(user['start_window'].toString()), 
+                                endWindow: user['end_window'] is int ? user['end_window'] : int.tryParse(user['end_window'].toString()),
+                              ),
+                            ),
+                          );
+                        }
+                      : null, // Disable if no user is selected
+                  tooltip: 'View Details',
+                ),
               ],
             ),
           ),

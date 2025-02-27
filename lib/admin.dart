@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'config.dart';
 import 'settings.dart';
 import '../../log_view/view_logs.dart';
@@ -6,9 +7,40 @@ import '../../log_view/view_alerts.dart';
 import '../../server/manage_sql_page.dart'; // Import the new SQL management page
 import '../../reports/reports.dart';
 import '../../server/mqtt.dart'; // This should export your MQTTPage widget
+import 'main.dart';
 
 class AdminPortal extends StatelessWidget {
-  const AdminPortal({super.key});
+  final VoidCallback onLogout;
+
+  const AdminPortal({super.key, required this.onLogout});
+
+  Future<void> _logout(BuildContext context) async {
+    print("DEBUG: Logout function called!");
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.remove('logged_in_user');
+    print("DEBUG: User logged out, SharedPreferences cleared.");
+
+    // Trigger auto-login again after logout
+    String newUser = await MyApp().autoLogin();
+    print("DEBUG: New user after logout: $newUser");
+
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => const LoginScreen()),
+      (Route<dynamic> route) => false,
+    );
+  }
+
+
+
+  Future<String> _getCurrentUser() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? user = prefs.getString('logged_in_user');
+    print("DEBUG: Fetching from SharedPreferences, found: $user");
+    return user ?? 'Unknown User';
+  }
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -117,20 +149,26 @@ class AdminPortal extends StatelessWidget {
             ListTile(
               leading: const Icon(Icons.logout),
               title: const Text('Log Out'),
-              onTap: () {
-                Navigator.popUntil(context, (route) => route.isFirst);
-              },
+              onTap: () => _logout(context),
             ),
           ],
         ),
       ),
-      body: const Center(
+      body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            Text(
-              '___ alerts today from ___ residents\nMore general data here!', // Placeholder for alert count
-              style: TextStyle(fontSize: 24),
+            FutureBuilder<String>(
+              future: _getCurrentUser(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const CircularProgressIndicator();
+                }
+                return Text(
+                  'Logged in as: ${snapshot.data}',
+                  style: const TextStyle(fontSize: 24),
+                );
+              },
             ),
           ],
         ),

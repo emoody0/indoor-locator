@@ -1,12 +1,42 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'config.dart';
 import '../time_windows/default_time_settings.dart';
 import '../log_view/view_logs.dart';
 import '../log_view/view_alerts.dart';
 import '../reports/reports.dart';
+import 'main.dart';
 
 class ResidentPortal extends StatelessWidget {
   const ResidentPortal({super.key});
+
+  Future<void> _logout(BuildContext context) async {
+    print("DEBUG: Logout function called!");
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.remove('logged_in_user');
+    print("DEBUG: User logged out, SharedPreferences cleared.");
+
+    // Trigger auto-login again after logout
+    String newUser = await MyApp().autoLogin();
+    print("DEBUG: New user after logout: $newUser");
+
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => const LoginScreen()),
+      (Route<dynamic> route) => false,
+    );
+  }
+
+
+  Future<String> _getCurrentUser() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? user = prefs.getString('logged_in_user');
+    print("DEBUG: Fetching from SharedPreferences, found: $user");
+    return user ?? 'Unknown User';
+  }
+
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -40,7 +70,7 @@ class ResidentPortal extends StatelessWidget {
                   MaterialPageRoute(
                     builder: (context) => DefaultTimeSettingsPage(
                       key: UniqueKey(),
-                      isAdmin: false, // Only allow changes to own settings
+                      isAdmin: false,
                     ),
                   ),
                 );
@@ -55,7 +85,7 @@ class ResidentPortal extends StatelessWidget {
                   MaterialPageRoute(
                     builder: (context) => ViewLogsPage(
                       key: UniqueKey(),
-                      isAdmin: false, // No filtering options for residents
+                      isAdmin: false,
                     ),
                   ),
                 );
@@ -70,7 +100,7 @@ class ResidentPortal extends StatelessWidget {
                   MaterialPageRoute(
                     builder: (context) => ViewAlertsPage(
                       key: UniqueKey(),
-                      isAdmin: false, // No filtering options for residents
+                      isAdmin: false,
                     ),
                   ),
                 );
@@ -83,9 +113,7 @@ class ResidentPortal extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const ReportsPage(
-                      isAdmin: false,
-                    ),
+                    builder: (context) => const ReportsPage(isAdmin: false),
                   ),
                 );
               },
@@ -93,20 +121,26 @@ class ResidentPortal extends StatelessWidget {
             ListTile(
               leading: const Icon(Icons.logout),
               title: const Text('Log Out'),
-              onTap: () {
-                Navigator.popUntil(context, (route) => route.isFirst);
-              },
+              onTap: () => _logout(context),
             ),
           ],
         ),
       ),
-      body: const Center(
+      body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            Text(
-              'Last alert: x time, y sensor\nStaying focused!', // Placeholder for alert count
-              style: TextStyle(fontSize: 24),
+            FutureBuilder<String>(
+              future: _getCurrentUser(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const CircularProgressIndicator();
+                }
+                return Text(
+                  'Logged in as: ${snapshot.data}',
+                  style: const TextStyle(fontSize: 24),
+                );
+              },
             ),
           ],
         ),
