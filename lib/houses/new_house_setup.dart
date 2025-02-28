@@ -1,20 +1,19 @@
 import 'package:flutter/material.dart';
 import 'room_widget.dart';
 import 'room.dart';
-import 'sensor.dart';
 import 'sensor_configuration.dart';
-import '../database_helper.dart';
-import 'dart:convert'; // For JSON encoding/decoding
+import '../server/database_helper.dart';
+// For JSON encoding/decoding
 
 class NewHouseSetupPage extends StatefulWidget {
   final List<Room> rooms;
   final String? houseName; // Optional house name for dynamic title
 
   const NewHouseSetupPage({
-    Key? key,
+    super.key,
     this.rooms = const [], // Default to an empty list
     this.houseName, // Pass house name if editing an existing house
-  }) : super(key: key);
+  });
 
   @override
   _NewHouseSetupPageState createState() => _NewHouseSetupPageState();
@@ -294,7 +293,7 @@ class _NewHouseSetupPageState extends State<NewHouseSetupPage> {
                   _buildSensorIcons(room),
                 ],
               );
-            }).toList(),
+            }),
           ],
         ),
         floatingActionButton: Column(

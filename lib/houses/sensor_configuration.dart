@@ -35,7 +35,7 @@ class _SensorConfigurationPageState extends State<SensorConfigurationPage>
         distanceInchesController.text = distanceInchesController.text.isNotEmpty ? distanceInchesController.text : "";
         
         // Do not reset selectedWall if it already has a value
-        selectedWall = selectedWall ?? null; 
+        selectedWall = selectedWall; 
     }
   }
 

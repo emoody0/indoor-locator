@@ -1,5 +1,5 @@
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
-import 'database_helper.dart';
+import '../server/database_helper.dart';
 import 'dart:isolate';
 import 'package:shared_preferences/shared_preferences.dart';
 

@@ -1,7 +1,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'database_helper.dart';
+import 'server/database_helper.dart';
 import 'admin.dart';
 import 'resident.dart';
 import 'backgroundmanager.dart';
@@ -79,7 +79,7 @@ void main() async {
   );
 
   initializeBackgroundManager(); // Start the background task
-
+  
   runApp(MyApp());
 }
 

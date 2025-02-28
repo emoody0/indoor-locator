@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../config.dart'; // Import config file
-import '../database_helper.dart'; // Import DatabaseHelper for user data handling
+import '../server/database_helper.dart'; // Import DatabaseHelper for user data handling
 
 class EditUserPage extends StatefulWidget {
   final int id; // User ID

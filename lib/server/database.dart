@@ -1,7 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'package:sqflite/sqflite.dart';
-import 'package:path/path.dart';
 
 // Import sqflite_common_ffi for non-mobile platforms
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';

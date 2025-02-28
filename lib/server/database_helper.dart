@@ -1,15 +1,14 @@
-import 'package:sqflite/sqflite.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:path/path.dart';
-import 'houses/room.dart';
-import 'dart:convert';
+import '../houses/room.dart';
 import 'package:intl/intl.dart';
+import 'dart:io';
 
 
 class DatabaseHelper {
   static final DatabaseHelper _instance = DatabaseHelper._internal();
   factory DatabaseHelper() => _instance;
-  static const int _databaseVersion = 5; // Incremented to include users table
-
+  
   static Database? _database;
 
   DatabaseHelper._internal();
@@ -21,6 +20,12 @@ class DatabaseHelper {
   }
 
   Future<Database> _initDatabase() async {
+    // Ensure databaseFactory is initialized if using sqflite_common_ffi
+        // Initialize databaseFactory for desktop/testing environments
+    if (!Platform.isAndroid && !Platform.isIOS) {
+      sqfliteFfiInit();
+      databaseFactory = databaseFactoryFfi;
+    }
     String path = join(await getDatabasesPath(), 'house_setup.db');
     return await openDatabase(
       path,
@@ -250,20 +255,51 @@ class DatabaseHelper {
 
 
   Future<List<Map<String, dynamic>>> getUsers() async {
-    final db = await database;
-    List<Map<String, dynamic>> results = await db.query('users');
+  final db = await database;
+  List<Map<String, dynamic>> results = await db.query('users');
 
-    print("DEBUG: Retrieved all users from DB: $results");
+    if (results.isEmpty) {
+      print("[DEBUG] No users found. Inserting default user...");
 
+      // Insert a default user to bypass login issues
+      await insertUser({
+        'name': 'Default User',
+        'email': 'default@gmail.com',
+        'userType': 'User',
+        'house': 'No House',
+        'organization': 'DefaultOrg',
+        'start_window': 28800000,
+        'end_window': 72000000,
+        'is_default': 1,
+      });
+
+
+      results = await db.query('users'); // Retrieve again after inserting
+      print("[DEBUG] Default user added: $results");
+    }
+
+    await insertUser({
+        'name': 'Default User two',
+        'email': 'default2@gmail.com',
+        'userType': 'Admin',
+        'house': 'No House',
+        'organization': 'DefaultOrg',
+        'start_window': 28800000,
+        'end_window': 72000000,
+        'is_default': 1,
+      });
+      
+    print("[DEBUG] Retrieved users from DB: $results");
     return results.map((user) {
-        return {
-            ...user,
-            'start_window': user['start_window'] ?? 28800000, // Store as epoch
-            'end_window': user['end_window'] ?? 72000000,
-            'is_default': user['is_default'] ?? 1,
-        };
+      return {
+        ...user,
+        'start_window': user['start_window'] ?? 28800000,
+        'end_window': user['end_window'] ?? 72000000,
+        'is_default': user['is_default'] ?? 1,
+      };
     }).toList();
   }
+
 
   Future<Map<String, dynamic>?> getUserById(int userId) async {
     final db = await database;

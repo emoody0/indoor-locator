@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../database_helper.dart';
+import '../server/database_helper.dart';
 import 'room.dart';
 import 'sensor.dart';
 //import 'house_map_page.dart';
@@ -64,7 +64,7 @@ class _HouseMapPageState extends State<HouseMapPage> {
               size: Size.infinite,
               painter: GridPainter(scale, offset),
             ),
-            ...rooms.map((room) => _buildRoomAndSensors(room)).toList(),
+            ...rooms.map((room) => _buildRoomAndSensors(room)),
           ],
         ),
       ),
@@ -94,7 +94,7 @@ class _HouseMapPageState extends State<HouseMapPage> {
             ),
           ),
         ),
-        ...room.sensors.map((sensor) => _buildSensorWidget(room, sensor)).toList(),
+        ...room.sensors.map((sensor) => _buildSensorWidget(room, sensor)),
       ],
     );
   }

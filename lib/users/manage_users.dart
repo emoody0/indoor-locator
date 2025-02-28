@@ -249,6 +249,8 @@ class _ManageUsersPageState extends State<ManageUsersPage> {
           email: user['email'],
           house: user['house'],
           userType: user['userType'],
+          startWindow: user['startWindow'],
+          endWindow: user['endWindow']
         ),
       ),
     );

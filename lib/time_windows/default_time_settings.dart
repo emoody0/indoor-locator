@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import '../config.dart'; // Import config file
-import 'configure_alert_windows.dart'; // Import the ConfigureAlertWindowsPage file
-import '../database_helper.dart';
+// Import the ConfigureAlertWindowsPage file
+import '../server/database_helper.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:intl/intl.dart';
 
 class DefaultTimeSettingsPage extends StatefulWidget {
   final bool isAdmin; // Parameter to determine if the user is an admin
@@ -188,10 +187,6 @@ class _DefaultTimeSettingsPageState extends State<DefaultTimeSettingsPage> {
   }
 
   String _epochToTime(int epoch) {
-    if (epoch == null) {
-        return "Invalid Time"; // Prevent crashes
-    }
-
     DateTime date = DateTime.fromMillisecondsSinceEpoch(epoch, isUtc: true).toLocal();
     String formattedTime = '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
     

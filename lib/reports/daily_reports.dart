@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../config.dart';
-import '../database_helper.dart';
+import '../server/database_helper.dart';
 
 class DailyReportsPage extends StatefulWidget {
   final bool isAdmin;

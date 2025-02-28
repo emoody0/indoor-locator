@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../config.dart'; // Import config file
-import '../database_helper.dart';
+import '../server/database_helper.dart';
 
 class AddUserPage extends StatefulWidget {
   const AddUserPage({super.key});
@@ -68,7 +68,7 @@ class _AddUserPageState extends State<AddUserPage> {
         false; // Default to false if dismissed
   }
 
-  Future<bool> _onWillPop() async {
+  Future<bool> _canPop() async {
     if (!isSaved) {
       return await showUnsavedChangesDialog();
     }
@@ -115,8 +115,14 @@ class _AddUserPageState extends State<AddUserPage> {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: _onWillPop,
+    return PopScope(
+      onPopInvokedWithResult: (didPop,result) async {
+        if (!didPop) return;
+        if (!await _canPop()) {
+          return;
+        }
+        Navigator.pop(context);
+      }, 
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Add User'),
@@ -124,7 +130,7 @@ class _AddUserPageState extends State<AddUserPage> {
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
             onPressed: () async {
-              if (await _onWillPop()) {
+              if (await _canPop()) {
                 Navigator.pop(context);
               }
             },

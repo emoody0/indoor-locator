@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../config.dart'; // Import config file
-import '../database_helper.dart'; // Import database helper
+import '../server/database_helper.dart'; // Import database helper
 import 'new_house_setup.dart'; // Import house setup page
 import 'view_house_page.dart';
 import 'room.dart';
