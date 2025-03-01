@@ -124,6 +124,7 @@ class DatabaseHelper {
   // Room-related methods (untouched)
   Future<int> insertRoom(Room room) async {
     print('Updating room: ${room.toJson()}');
+    print('[DEBUG] Local DB: Inserting room into SQLite: ${room.toJson()}');
     final db = await database;
     //return await db.insert('rooms', room.toJson());
     return await db.insert(
@@ -259,7 +260,7 @@ class DatabaseHelper {
   List<Map<String, dynamic>> results = await db.query('users');
 
     if (results.isEmpty) {
-      print("[DEBUG] No users found. Inserting default user...");
+      // print("[DEBUG] No users found. Inserting default user...");
 
       // Insert a default user to bypass login issues
       await insertUser({
@@ -273,12 +274,7 @@ class DatabaseHelper {
         'is_default': 1,
       });
 
-
-      results = await db.query('users'); // Retrieve again after inserting
-      print("[DEBUG] Default user added: $results");
-    }
-
-    await insertUser({
+      await insertUser({
         'name': 'Default User two',
         'email': 'default2@gmail.com',
         'userType': 'Admin',
@@ -288,8 +284,13 @@ class DatabaseHelper {
         'end_window': 72000000,
         'is_default': 1,
       });
+
+
+      results = await db.query('users'); // Retrieve again after inserting
+      // print("[DEBUG] Default user added: $results");
+    }
       
-    print("[DEBUG] Retrieved users from DB: $results");
+    // print("[DEBUG] Retrieved users from DB: $results");
     return results.map((user) {
       return {
         ...user,
@@ -310,10 +311,10 @@ class DatabaseHelper {
     );
 
     if (results.isNotEmpty) {
-        print("DEBUG: Successfully retrieved user ID: $userId -> ${results.first}");
+        // print("DEBUG: Successfully retrieved user ID: $userId -> ${results.first}");
         return results.first;
     } else {
-        print("DEBUG: No user found with ID: $userId");
+        // print("DEBUG: No user found with ID: $userId");
         return null;
     }
   }
@@ -356,7 +357,7 @@ class DatabaseHelper {
 
 
   Future<int> deleteUser(int id) async {
-    print('Deleting user with ID $id');
+    // print('Deleting user with ID $id');
     final db = await database;
     return await db.delete('users', where: 'id = ?', whereArgs: [id]);
   }
@@ -379,7 +380,7 @@ class DatabaseHelper {
         where: 'is_default = 1 AND userType != "Admin"',
     );
 
-    print("DEBUG: Admin updated time windows for $result users with is_default=1.");
+    // print("DEBUG: Admin updated time windows for $result users with is_default=1.");
   }
 
 
@@ -399,7 +400,7 @@ class DatabaseHelper {
 
         // ✅ Admins must always have is_default = 1
         if (userType == 'Admin') {
-            print("DEBUG: Admin (ID: $userId) is updating their own time. Ensuring is_default = 1.");
+            // print("DEBUG: Admin (ID: $userId) is updating their own time. Ensuring is_default = 1.");
 
             await db.update(
                 'users',
@@ -416,9 +417,9 @@ class DatabaseHelper {
 
         // ✅ If a regular user is modifying their time, set `is_default = 0`
         if (isDefault == 1) {
-            print("DEBUG: User ID $userId is customizing their time. Changing is_default = 0.");
+            // print("DEBUG: User ID $userId is customizing their time. Changing is_default = 0.");
         } else {
-            print("DEBUG: User ID $userId already has custom settings (is_default=0). Keeping as is.");
+            // print("DEBUG: User ID $userId already has custom settings (is_default=0). Keeping as is.");
         }
     }
 
@@ -434,14 +435,14 @@ class DatabaseHelper {
         whereArgs: [userId],
     );
 
-    print("DEBUG: updateUserTimeWindow completed for user ID: $userId");
+    // print("DEBUG: updateUserTimeWindow completed for user ID: $userId");
   }
 
 
   Future<void> verifyDatabaseUpdate(int userId) async {
     final db = await database;
     final result = await db.query('users', where: 'id = ?', whereArgs: [userId]);
-    print("DEBUG: Retrieved user after update: $result");
+    // print("DEBUG: Retrieved user after update: $result");
   }
 
   Future<void> revertToDefaultTimeWindow(int userId) async {
@@ -457,7 +458,7 @@ class DatabaseHelper {
     );
 
     if (adminTime.isEmpty) {
-        print("DEBUG: No admin found. Cannot revert user ID $userId to default.");
+        // print("DEBUG: No admin found. Cannot revert user ID $userId to default.");
         return;
     }
 
@@ -471,7 +472,7 @@ class DatabaseHelper {
         whereArgs: [userId],
     );
 
-    print("DEBUG: User ID $userId reverted to admin's default settings (Start: $defaultStart, End: $defaultEnd).");
+    // print("DEBUG: User ID $userId reverted to admin's default settings (Start: $defaultStart, End: $defaultEnd).");
   }
 
 
@@ -499,7 +500,7 @@ class DatabaseHelper {
     );
 
     if (result.isEmpty) {
-      print('Users table does not exist. Creating...');
+      // print('Users table does not exist. Creating...');
       await db.execute('''
         CREATE TABLE users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -510,9 +511,9 @@ class DatabaseHelper {
             organization TEXT
         )
       ''');
-      print('Users table created.');
+      // print('Users table created.');
     } else {
-      print('Users table already exists.');
+      // print('Users table already exists.');
     }
   }
 

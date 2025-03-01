@@ -3,7 +3,9 @@ import 'room_widget.dart';
 import 'room.dart';
 import 'sensor_configuration.dart';
 import '../server/database_helper.dart';
-// For JSON encoding/decoding
+import '../server/database_service.dart';
+
+
 
 class NewHouseSetupPage extends StatefulWidget {
   final List<Room> rooms;
@@ -114,20 +116,25 @@ class _NewHouseSetupPageState extends State<NewHouseSetupPage> {
     });
   }
 
-  Future<void> saveHouseToDatabase() async {
-    final db = DatabaseHelper();
+Future<void> saveHouseToDatabase() async {
+    final db = DatabaseHelper(); // Local DB
     String? existingHouseName = rooms.isNotEmpty ? rooms.first.houseName : null;
 
     if (existingHouseName != null) {
       for (var room in rooms) {
         room.houseName = existingHouseName;
 
-        if (room.id == null) {
-          room.id = await db.insertRoom(room);
-        } else {
-          await db.updateRoom(room);
-        }
+        // Insert into LOCAL DB
+        await db.insertRoom(room);
       }
+
+      // Convert Room objects to Maps before sending to MariaDB
+      await DatabaseService.sendHouseData(
+        nextGroupId,
+        existingHouseName,
+        rooms.map((r) => r.toJson()).toList(),
+      );
+
       _showSnackBar('House "$existingHouseName" updated successfully!');
     } else {
       TextEditingController nameController = TextEditingController();
@@ -161,14 +168,26 @@ class _NewHouseSetupPageState extends State<NewHouseSetupPage> {
 
         for (var room in rooms) {
           room.houseName = nameController.text;
-          room.id = await db.insertRoom(room);
+
+          // Insert into LOCAL DB
+          await db.insertRoom(room);
         }
+
+        // Send rooms to MariaDB
+        await DatabaseService.sendHouseData(
+          nextGroupId,
+          nameController.text,
+          rooms.map((r) => r.toJson()).toList(),
+        );
+
         _showSnackBar('House "${nameController.text}" saved successfully!');
       } else {
         _showSnackBar('House name cannot be empty!');
       }
     }
   }
+
+
 
   Future<bool> _onWillPop() async {
     try {

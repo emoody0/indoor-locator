@@ -1,5 +1,6 @@
 import 'package:mysql1/mysql1.dart';
 import 'dart:convert'; // Required for utf8 decoding
+
 class DatabaseService {
   static final ConnectionSettings settings = ConnectionSettings(
     host: '192.168.90.63',
@@ -23,25 +24,11 @@ class DatabaseService {
   // **USER MANAGEMENT FUNCTIONS**
 
   /// **Fetch all users from the server**
-
-
   static Future<List<Map<String, dynamic>>> fetchUsers() async {
     final conn = await MySqlConnection.connect(settings);
     try {
       final results = await conn.query('SELECT * FROM Users');
-
-      return results.map((row) {
-        final rowData = Map<String, dynamic>.from(row.fields);
-
-        // Convert Blob fields to String
-        rowData.forEach((key, value) {
-          if (value is Blob) {
-            rowData[key] = utf8.decode(value.toBytes()); // Correct conversion
-          }
-        });
-
-        return rowData;
-      }).toList();
+      return results.map((row) => row.fields).toList();
     } catch (e) {
       print('[ERROR] Failed to fetch users: $e');
       return [];
@@ -49,7 +36,6 @@ class DatabaseService {
       await conn.close();
     }
   }
-
 
   /// **Insert a new user into the server**
   static Future<void> insertUser(Map<String, dynamic> userData) async {
@@ -87,7 +73,7 @@ class DatabaseService {
   static Future<void> deleteUser(String userId) async {
     final conn = await MySqlConnection.connect(settings);
     try {
-      await conn.query('DELETE FROM Users WHERE id = ?', [userId]); // UUID is String
+      await conn.query('DELETE FROM Users WHERE id = ?', [userId]);
       print('[SUCCESS] User deleted successfully with UUID: $userId');
     } catch (e) {
       print('[ERROR] Failed to delete user: $e');
@@ -95,7 +81,6 @@ class DatabaseService {
       await conn.close();
     }
   }
-
 
   // **HOUSE MANAGEMENT FUNCTIONS**
 
@@ -113,21 +98,62 @@ class DatabaseService {
     }
   }
 
-  /// **Insert a new house**
-  static Future<void> insertHouse(Map<String, dynamic> houseData) async {
-    final conn = await MySqlConnection.connect(settings);
+  /// **Send house data to the MariaDB server**
+  static Future<void> sendHouseData(int houseId, String houseName, List<Map<String, dynamic>> rooms) async {
+  final conn = await MySqlConnection.connect(settings);
     try {
+      print("[MariaDB] Inserting House: $houseName");
+
+      // Insert house and get its ID
       await conn.query(
-        'INSERT INTO Houses (name) VALUES (?)',
-        [houseData['name']],
+        'INSERT INTO Houses (name) VALUES (?) ON DUPLICATE KEY UPDATE name = VALUES(name)',
+        [houseName],
       );
-      print('[SUCCESS] House inserted successfully');
+
+      // Retrieve the correct house ID
+      var result = await conn.query('SELECT id FROM Houses WHERE name = ?', [houseName]);
+      if (result.isNotEmpty) {
+        houseId = result.first['id']; // Assign the retrieved house ID
+        print("[MariaDB] Retrieved House ID: $houseId");
+      } else {
+        print("[ERROR] Failed to retrieve house ID.");
+        return;
+      }
+
+      for (var room in rooms) {
+        print("[MariaDB] Inserting Room: $room");
+
+        // Ensure position values are correctly extracted
+        var position = room['position'];
+        double posX = position is Map ? position['x'] ?? 0.0 : 0.0;
+        double posY = position is Map ? position['y'] ?? 0.0 : 0.0;
+
+        await conn.query(
+          'INSERT INTO Rooms (house_id, house_name, name, width, height, position_x, position_y) '
+          'VALUES (?, ?, ?, ?, ?, ?, ?) '
+          'ON DUPLICATE KEY UPDATE house_name = VALUES(house_name), name = VALUES(name), width = VALUES(width), height = VALUES(height), position_x = VALUES(position_x), position_y = VALUES(position_y)',
+          [
+            houseId,
+            houseName,
+            room['name'] ?? 'Unnamed Room',
+            room['width'],
+            room['height'],
+            posX, // Extracted from position map
+            posY,
+          ],
+        );
+      }
+
+      print('[MariaDB] House and rooms successfully saved.');
     } catch (e) {
-      print('[ERROR] Failed to insert house: $e');
+      print('[ERROR] Failed to send house data to MariaDB: $e');
     } finally {
       await conn.close();
     }
   }
+
+
+
 
   /// **Delete a house**
   static Future<void> deleteHouse(int houseId) async {

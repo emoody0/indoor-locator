@@ -14,7 +14,7 @@ void initializeBackgroundManager() {
 class MyTaskHandler extends TaskHandler {
   @override
   Future<void> onStart(DateTime timestamp, SendPort? sendPort) async {
-    print("[DEBUG] Background service started at: $timestamp");
+    // print("[DEBUG] Background service started at: $timestamp");
   }
 
   @override
@@ -24,28 +24,28 @@ class MyTaskHandler extends TaskHandler {
 
   @override
   Future<void> onDestroy(DateTime timestamp, SendPort? sendPort) async {
-    print("[DEBUG] Background service stopped at: $timestamp");
+    // print("[DEBUG] Background service stopped at: $timestamp");
   }
 
   Future<void> pingDatabase() async {
-    print("[DEBUG] Running Database Ping Service at: ${DateTime.now()}");
+    // print("[DEBUG] Running Database Ping Service at: ${DateTime.now()}");
 
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     int? userId = prefs.getInt('user_id');
     if (userId == null) {
-        print("[DEBUG] No logged-in user found. Skipping database ping.");
+        // print("[DEBUG] No logged-in user found. Skipping database ping.");
         return;
     }
 
     final db = DatabaseHelper();
     final user = await db.getUserById(userId);
     if (user == null) {
-        print("[DEBUG] User ID $userId not found in database. Skipping database ping.");
+        // print("[DEBUG] User ID $userId not found in database. Skipping database ping.");
         return;
     }
 
     if (user['userType'] != 'User') {
-        print("[DEBUG] Logged-in user is an Admin. Skipping database ping.");
+        // print("[DEBUG] Logged-in user is an Admin. Skipping database ping.");
         return;
     }
 
@@ -61,14 +61,14 @@ class MyTaskHandler extends TaskHandler {
     
     int currentTime = DateTime.now().hour * 3600000 + DateTime.now().minute * 60000 + DateTime.now().second * 1000;
 
-    print("[DEBUG] Converted Allowed Window: $startWindow - $endWindow");
-    print("[DEBUG] Converted Current Time: $currentTime");
+    // print("[DEBUG] Converted Allowed Window: $startWindow - $endWindow");
+    // print("[DEBUG] Converted Current Time: $currentTime");
 
     if (currentTime >= startWindow && currentTime <= endWindow) {
-        print("[DEBUG] Within allowed time window. Pinging database...");
+        // print("[DEBUG] Within allowed time window. Pinging database...");
         // await db.logPing(DateTime.now()); // Uncomment to enable logging
     } else {
-        print("[DEBUG] Outside of allowed time window. Skipping database ping.");
+        // print("[DEBUG] Outside of allowed time window. Skipping database ping.");
     }
   }
 

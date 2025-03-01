@@ -15,14 +15,14 @@ class AdminPortal extends StatelessWidget {
   const AdminPortal({super.key, required this.onLogout});
 
   Future<void> _logout(BuildContext context) async {
-    print("DEBUG: Logout function called!");
+    // print("DEBUG: Logout function called!");
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.remove('logged_in_user');
-    print("DEBUG: User logged out, SharedPreferences cleared.");
+    // print("DEBUG: User logged out, SharedPreferences cleared.");
 
     // Trigger auto-login again after logout
     String newUser = await MyApp().autoLogin();
-    print("DEBUG: New user after logout: $newUser");
+    // print("DEBUG: New user after logout: $newUser");
 
     Navigator.pushAndRemoveUntil(
       context,
@@ -36,7 +36,7 @@ class AdminPortal extends StatelessWidget {
   Future<String> _getCurrentUser() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     String? user = prefs.getString('logged_in_user');
-    print("DEBUG: Fetching from SharedPreferences, found: $user");
+    // print("DEBUG: Fetching from SharedPreferences, found: $user");
     return user ?? 'Unknown User';
   }
 
@@ -133,7 +133,6 @@ class AdminPortal extends StatelessWidget {
                 );
               },
             ),
-            // MQTT Page Menu Item
             ListTile(
               leading: const Icon(Icons.network_wifi),
               title: const Text('MQTT Data'),
