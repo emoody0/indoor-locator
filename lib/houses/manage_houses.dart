@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../config.dart'; // Import config file
 import '../server/database_helper.dart'; // Import database helper
 import 'new_house_setup.dart'; // Import house setup page
+import '../server/database_service.dart';
 import 'view_house_page.dart';
 import 'room.dart';
 
@@ -182,12 +183,20 @@ class _ManageHousesPageState extends State<ManageHousesPage> {
   }
 
   Future<void> _deleteHouse(String houseName) async {
-    // final db = DatabaseHelper();
-    await db.deleteHouseByName(houseName); // Delete the house from the database
-    print('Deleted house: $houseName'); // Debug log
-    await _loadHouses(); // Refresh the list of houses
-    _showSnackBar('House "$houseName" deleted successfully!');
-  }
+      await db.deleteHouseByName(houseName); // Delete from local DB
+      
+      // Retrieve house ID from MariaDB before deleting
+      int? houseId = await DatabaseService.getHouseIdByName(houseName);
+      if (houseId != null) {
+        await DatabaseService.deleteHouse(houseId); // Delete from MariaDB using house ID
+        print('[MariaDB] Deleted house: $houseName with ID: $houseId'); // Debug log
+        await _loadHouses(); // Refresh the list of houses
+        _showSnackBar('House "$houseName" deleted successfully!');
+      } else {
+        print('[DEBUG] Failed to retrieve house ID for: $houseName');
+        _showSnackBar('[DEBUG] Failed to delete house "$houseName".');
+      }
+    }
 
   Future<void> _loadHouses() async {
     // final db = DatabaseHelper();

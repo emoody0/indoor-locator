@@ -125,8 +125,23 @@ class DatabaseService {
 
         // Ensure position values are correctly extracted
         var position = room['position'];
-        double posX = position is Map ? position['x'] ?? 0.0 : 0.0;
-        double posY = position is Map ? position['y'] ?? 0.0 : 0.0;
+
+        // Ensure position is correctly extracted
+        double posX = 0.0;
+        double posY = 0.0;
+
+        if (position is String) {
+          try {
+            var decodedPosition = jsonDecode(position);
+            posX = decodedPosition['x'] ?? 0.0;
+            posY = decodedPosition['y'] ?? 0.0;
+          } catch (e) {
+            print("[ERROR] Failed to decode position JSON: $e");
+          }
+        } else if (position is Map) {
+          posX = position['x'] ?? 0.0;
+          posY = position['y'] ?? 0.0;
+        }
 
         await conn.query(
           'INSERT INTO Rooms (house_id, house_name, name, width, height, position_x, position_y) '
@@ -168,6 +183,26 @@ class DatabaseService {
     }
   }
 
+  /// **Retrieve house ID by name**
+  static Future<int?> getHouseIdByName(String houseName) async {
+    final conn = await MySqlConnection.connect(settings);
+    try {
+      var results = await conn.query(
+        'SELECT id FROM Houses WHERE name = ?',
+        [houseName]
+      );
+
+      if (results.isNotEmpty) {
+        return results.first[0] as int; // Retrieve house ID
+      }
+      return null; // House not found
+    } catch (e) {
+      print('[ERROR] Failed to retrieve house ID: $e');
+      return null;
+    } finally {
+      await conn.close();
+    }
+  }
 
   // **SQL MANAGEMENT FUNCTIONS (FOR `ManageSQLPage`)**
 
