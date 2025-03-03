@@ -221,7 +221,7 @@ class _ManageUsersPageState extends State<ManageUsersPage> {
   }
 
   Future<void> _confirmDeleteUser(String id) async {
-    print('Attempting to delete user with UUID: $id'); // Debugging
+    // print('Attempting to delete user with UUID: $id'); // Debugging
 
     try {
       await DatabaseService.deleteUser(id);
@@ -230,7 +230,7 @@ class _ManageUsersPageState extends State<ManageUsersPage> {
         const SnackBar(content: Text('User deleted successfully!')),
       );
     } catch (e) {
-      print('[ERROR] Failed to delete user: $e');
+      // print('[ERROR] Failed to delete user: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to delete user: $e')),
       );

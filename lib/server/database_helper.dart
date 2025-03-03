@@ -102,7 +102,7 @@ class DatabaseHelper {
 
 
   /*Future<void> _migrateDatabase(Database db, int oldVersion, int newVersion) async {
-    print('Upgrading database from $oldVersion to $newVersion');
+    // print('Upgrading database from $oldVersion to $newVersion');
     if (oldVersion < 2) {
       await db.execute('ALTER TABLE rooms ADD COLUMN houseName TEXT');
     }
@@ -123,8 +123,8 @@ class DatabaseHelper {
 
   // Room-related methods (untouched)
   Future<int> insertRoom(Room room) async {
-    print('Updating room: ${room.toJson()}');
-    print('[DEBUG] Local DB: Inserting room into SQLite: ${room.toJson()}');
+    // print('Updating room: ${room.toJson()}');
+    // print('[DEBUG] Local DB: Inserting room into SQLite: ${room.toJson()}');
     final db = await database;
     //return await db.insert('rooms', room.toJson());
     return await db.insert(
@@ -136,7 +136,7 @@ class DatabaseHelper {
   }
 
   Future<int> updateRoom(Room room) async {
-    print('Updating room: ${room.toJson()}');
+    // print('Updating room: ${room.toJson()}');
     final db = await database;
     /*return await db.update(
       'rooms',
@@ -155,7 +155,7 @@ class DatabaseHelper {
 
   Future<void> deleteHouseByName(String houseName) async {
     final db = await database;
-    print('Deleting house: $houseName');
+    // print('Deleting house: $houseName');
     await db.delete(
       'rooms',
       where: 'houseName = ?',
@@ -177,7 +177,7 @@ class DatabaseHelper {
     final dbPath = join(await getDatabasesPath(), 'house_setup.db');
     await deleteDatabase(dbPath);
     _database = null; // Reset cached database instance to avoid errors
-    print('Database cleared. Rebuilding...');
+    // print('Database cleared. Rebuilding...');
   }
 
 
@@ -187,7 +187,7 @@ class DatabaseHelper {
     final db = await database;
     final List<Map<String, dynamic>> result =
         await db.rawQuery('SELECT DISTINCT houseName FROM rooms WHERE houseName IS NOT NULL');
-    print('Distinct house names from DB: $result');
+    // print('Distinct house names from DB: $result');
     return result.map((row) => row['houseName'] as String).toList();
   }
 
@@ -203,7 +203,7 @@ class DatabaseHelper {
 
   // User-related methods
   Future<int> insertUser(Map<String, dynamic> user) async {
-    print('Inserting user: $user');
+    // print('Inserting user: $user');
     final db = await database;
 
     // Ensure values are stored as integers
@@ -358,7 +358,7 @@ class DatabaseHelper {
 
 
   Future<int> deleteUser(int id) async {
-    // print('Deleting user with ID $id');
+    // // print('Deleting user with ID $id');
     final db = await database;
     return await db.delete('users', where: 'id = ?', whereArgs: [id]);
   }
@@ -501,7 +501,7 @@ class DatabaseHelper {
     );
 
     if (result.isEmpty) {
-      // print('Users table does not exist. Creating...');
+      // // print('Users table does not exist. Creating...');
       await db.execute('''
         CREATE TABLE users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -512,9 +512,9 @@ class DatabaseHelper {
             organization TEXT
         )
       ''');
-      // print('Users table created.');
+      // // print('Users table created.');
     } else {
-      // print('Users table already exists.');
+      // // print('Users table already exists.');
     }
   }
 

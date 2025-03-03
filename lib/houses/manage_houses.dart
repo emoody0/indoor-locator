@@ -5,6 +5,8 @@ import 'new_house_setup.dart'; // Import house setup page
 import '../server/database_service.dart';
 import 'view_house_page.dart';
 import 'room.dart';
+import 'dart:typed_data';
+
 
 class ManageHousesPage extends StatefulWidget {
   const ManageHousesPage({super.key});
@@ -67,9 +69,12 @@ class _ManageHousesPageState extends State<ManageHousesPage> {
                   onPressed: selectedHouseIndex != null
                       ? () async {
                           final selectedHouseName = houseNames[selectedHouseIndex!];
-                          //final db = DatabaseHelper();
+
+                          // Fetch rooms associated with the house
                           final rooms = await db.getRoomsByHouseName(selectedHouseName);
-                          Navigator.push(
+
+                          // Navigate to the edit screen
+                          await Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (context) => NewHouseSetupPage(
@@ -77,7 +82,12 @@ class _ManageHousesPageState extends State<ManageHousesPage> {
                                 houseName: selectedHouseName,
                               ),
                             ),
-                          ).then((_) => _loadHouses()); // Reload house list
+                          );
+
+                          // Sync the rooms to the server after editing
+                          await _updateHouseRooms(selectedHouseName);
+                          
+                          await _loadHouses(); // Reload house list after editing
                         }
                       : null,
                   tooltip: 'Edit House',
@@ -189,12 +199,12 @@ class _ManageHousesPageState extends State<ManageHousesPage> {
       int? houseId = await DatabaseService.getHouseIdByName(houseName);
       if (houseId != null) {
         await DatabaseService.deleteHouse(houseId); // Delete from MariaDB using house ID
-        print('[MariaDB] Deleted house: $houseName with ID: $houseId'); // Debug log
+        // print('[MariaDB] Deleted house: $houseName with ID: $houseId'); // Debug log
         await _loadHouses(); // Refresh the list of houses
         _showSnackBar('House "$houseName" deleted successfully!');
       } else {
-        print('[DEBUG] Failed to retrieve house ID for: $houseName');
-        _showSnackBar('[DEBUG] Failed to delete house "$houseName".');
+        // print('[DEBUG] Failed to retrieve house ID for: $houseName');
+        _showSnackBar('Failed to delete house "$houseName".');
       }
     }
 
@@ -207,6 +217,8 @@ class _ManageHousesPageState extends State<ManageHousesPage> {
     });
   }
 
+
+
   void _showSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -216,12 +228,63 @@ class _ManageHousesPageState extends State<ManageHousesPage> {
     );
   }
 
-  void _showHouseDetails(String houseName) async {
-    // final db = DatabaseHelper();
-    final rooms = await db.getRoomsByHouseName(houseName); // Fetch rooms
+  Future<void> _updateHouseRooms(String houseName) async {
+    try {
+      print('[DEBUG] Syncing rooms for house: $houseName');
 
-    // Prepare the room details in a tidy format
-    String roomDetails = rooms.map((room) {
+      // Fetch rooms from local DB
+      final localRooms = await db.getRoomsByHouseName(houseName);
+
+      // Fetch rooms from server
+      final serverRooms = await DatabaseService.getRoomsByHouseName(houseName);
+
+      // Convert server rooms to a Set for easy comparison
+      final serverRoomNames = serverRooms.map((room) => room['name']).toSet();
+      final localRoomNames = localRooms.map((room) => room.name).toSet();
+
+      // Determine which rooms to delete from the server
+      final roomsToDelete = serverRooms.where((room) => !localRoomNames.contains(room['name'])).toList();
+
+      // Determine which rooms to update or add
+      final roomsToUpdate = localRooms.where((room) => serverRoomNames.contains(room.name)).toList();
+      final roomsToAdd = localRooms.where((room) => !serverRoomNames.contains(room.name)).toList();
+
+      // Delete removed rooms from server
+      for (var room in roomsToDelete) {
+        await DatabaseService.deleteRoomByName(houseName, room['name']);
+        print('[SUCCESS] Deleted room "${room['name']}" from server.');
+      }
+
+      // Update existing rooms on server
+      for (var room in roomsToUpdate) {
+        await DatabaseService.updateRoom(room);
+        print('[SUCCESS] Updated room "${room.name}" on server.');
+      }
+
+      // Add new rooms to server
+      for (var room in roomsToAdd) {
+        await DatabaseService.insertRoom(room);
+        print('[SUCCESS] Added room "${room.name}" to server.');
+      }
+
+      print('[SUCCESS] Room sync completed for house: $houseName');
+    } catch (e) {
+      print('[ERROR] Failed to sync rooms for house: $houseName - $e');
+    }
+  }
+
+  void _showHouseDetails(String houseName) async {
+    // Fetch rooms and remove duplicates
+    final rooms = (await db.getRoomsByHouseName(houseName)).toSet().toList();
+
+    // Ensure each room is only listed once
+    final uniqueRooms = <String, Room>{};
+    for (var room in rooms) {
+      uniqueRooms[room.name] = room; // Uses the room name as a unique key
+    }
+
+    // Format the room details
+    String roomDetails = uniqueRooms.values.map((room) {
       return 'Room: ${room.name}\nDimensions: ${room.width.toStringAsFixed(1)} ft x ${room.height.toStringAsFixed(1)} ft\n';
     }).join('\n');
 

@@ -1,5 +1,6 @@
 import 'package:mysql1/mysql1.dart';
 import 'dart:convert'; // Required for utf8 decoding
+import '../houses/room.dart'; // Adjust path if needed
 
 class DatabaseService {
   static final ConnectionSettings settings = ConnectionSettings(
@@ -14,10 +15,10 @@ class DatabaseService {
   static Future<void> testConnection() async {
     try {
       final conn = await MySqlConnection.connect(settings);
-      print('[SUCCESS] Connected to the database!');
+      // print('[SUCCESS] Connected to the database!');
       await conn.close();
     } catch (e) {
-      print('[ERROR] Failed to connect to the database: $e');
+      // print('[ERROR] Failed to connect to the database: $e');
     }
   }
 
@@ -30,7 +31,7 @@ class DatabaseService {
       final results = await conn.query('SELECT * FROM Users');
       return results.map((row) => row.fields).toList();
     } catch (e) {
-      print('[ERROR] Failed to fetch users: $e');
+      // print('[ERROR] Failed to fetch users: $e');
       return [];
     } finally {
       await conn.close();
@@ -45,9 +46,9 @@ class DatabaseService {
         'INSERT INTO Users (name, email, userType, house) VALUES (?, ?, ?, ?)',
         [userData['name'], userData['email'], userData['userType'], userData['house']],
       );
-      print('[SUCCESS] User inserted successfully');
+      // print('[SUCCESS] User inserted successfully');
     } catch (e) {
-      print('[ERROR] Failed to insert user: $e');
+      // print('[ERROR] Failed to insert user: $e');
     } finally {
       await conn.close();
     }
@@ -61,9 +62,9 @@ class DatabaseService {
         'UPDATE Users SET name = ?, email = ?, userType = ?, house = ? WHERE id = ?',
         [updatedData['name'], updatedData['email'], updatedData['userType'], updatedData['house'], userId],
       );
-      print('[SUCCESS] User updated successfully');
+      // print('[SUCCESS] User updated successfully');
     } catch (e) {
-      print('[ERROR] Failed to update user: $e');
+      // print('[ERROR] Failed to update user: $e');
     } finally {
       await conn.close();
     }
@@ -74,9 +75,9 @@ class DatabaseService {
     final conn = await MySqlConnection.connect(settings);
     try {
       await conn.query('DELETE FROM Users WHERE id = ?', [userId]);
-      print('[SUCCESS] User deleted successfully with UUID: $userId');
+      // print('[SUCCESS] User deleted successfully with UUID: $userId');
     } catch (e) {
-      print('[ERROR] Failed to delete user: $e');
+      // print('[ERROR] Failed to delete user: $e');
     } finally {
       await conn.close();
     }
@@ -91,7 +92,7 @@ class DatabaseService {
       final results = await conn.query('SELECT * FROM Houses');
       return results.map((row) => row.fields).toList();
     } catch (e) {
-      print('[ERROR] Failed to fetch houses: $e');
+      // print('[ERROR] Failed to fetch houses: $e');
       return [];
     } finally {
       await conn.close();
@@ -100,11 +101,11 @@ class DatabaseService {
 
   /// **Send house data to the MariaDB server**
   static Future<void> sendHouseData(int houseId, String houseName, List<Map<String, dynamic>> rooms) async {
-  final conn = await MySqlConnection.connect(settings);
+    final conn = await MySqlConnection.connect(settings);
     try {
-      print("[MariaDB] Inserting House: $houseName");
+      print("[MariaDB] Inserting/Updating House: $houseName");
 
-      // Insert house and get its ID
+      // Insert house (ON DUPLICATE KEY UPDATE ensures no duplicate house names)
       await conn.query(
         'INSERT INTO Houses (name) VALUES (?) ON DUPLICATE KEY UPDATE name = VALUES(name)',
         [houseName],
@@ -121,12 +122,10 @@ class DatabaseService {
       }
 
       for (var room in rooms) {
-        print("[MariaDB] Inserting Room: $room");
+        print("[MariaDB] Processing Room: $room");
 
         // Ensure position values are correctly extracted
         var position = room['position'];
-
-        // Ensure position is correctly extracted
         double posX = 0.0;
         double posY = 0.0;
 
@@ -143,31 +142,85 @@ class DatabaseService {
           posY = position['y'] ?? 0.0;
         }
 
+        // **Use ON DUPLICATE KEY UPDATE to prevent duplicate rooms**
         await conn.query(
           'INSERT INTO Rooms (house_id, house_name, name, width, height, position_x, position_y) '
           'VALUES (?, ?, ?, ?, ?, ?, ?) '
-          'ON DUPLICATE KEY UPDATE house_name = VALUES(house_name), name = VALUES(name), width = VALUES(width), height = VALUES(height), position_x = VALUES(position_x), position_y = VALUES(position_y)',
+          'ON DUPLICATE KEY UPDATE '
+          'house_name = VALUES(house_name), name = VALUES(name), width = VALUES(width), height = VALUES(height), '
+          'position_x = VALUES(position_x), position_y = VALUES(position_y)',
           [
             houseId,
             houseName,
             room['name'] ?? 'Unnamed Room',
             room['width'],
             room['height'],
-            posX, // Extracted from position map
+            posX,
             posY,
           ],
         );
+        print("[SUCCESS] Room ${room['name']} inserted/updated.");
       }
 
-      print('[MariaDB] House and rooms successfully saved.');
+      print("[SUCCESS] House and rooms successfully synced.");
     } catch (e) {
-      print('[ERROR] Failed to send house data to MariaDB: $e');
+      print("[ERROR] Failed to send house data to MariaDB: $e");
     } finally {
       await conn.close();
     }
   }
 
 
+  static Future<List<Map<String, dynamic>>> getRoomsByHouseName(String houseName) async {
+    final conn = await MySqlConnection.connect(settings);
+    try {
+      final results = await conn.query(
+        'SELECT * FROM rooms WHERE houseName = ?',
+        [houseName]
+      );
+      return results.map((row) => row.fields).toList();
+    } catch (e) {
+      print('[ERROR] Failed to fetch rooms from server: $e');
+      return [];
+    } finally {
+      await conn.close();
+    }
+  }
+
+  static Future<void> deleteRoomByName(String houseName, String roomName) async {
+    final conn = await MySqlConnection.connect(settings);
+    try {
+      await conn.query(
+        'DELETE FROM rooms WHERE houseName = ? AND name = ?',
+        [houseName, roomName]
+      );
+      print('[SUCCESS] Deleted room "$roomName" from server.');
+    } catch (e) {
+      print('[ERROR] Failed to delete room: $e');
+    } finally {
+      await conn.close();
+    }
+  }
+
+  static Future<void> updateRoom(Room room) async {
+    final conn = await MySqlConnection.connect(settings);
+    try {
+      await conn.query(
+        'UPDATE rooms SET position = ?, width = ?, height = ?, isGrouped = ?, connectedRoom = ?, connectedWall = ?, sensors = ? WHERE houseName = ? AND name = ?',
+        [
+          room.position.toString(), room.width, room.height,
+          room.isGrouped ? 1 : 0, room.connectedRoom,
+          room.connectedWall, room.sensors,
+          room.houseName, room.name
+        ]
+      );
+      print('[SUCCESS] Updated room "${room.name}" on server.');
+    } catch (e) {
+      print('[ERROR] Failed to update room: $e');
+    } finally {
+      await conn.close();
+    }
+  }
 
 
   /// **Delete a house**
@@ -175,9 +228,9 @@ class DatabaseService {
     final conn = await MySqlConnection.connect(settings);
     try {
       await conn.query('DELETE FROM Houses WHERE id = ?', [houseId]);
-      print('[SUCCESS] House deleted successfully');
+      // print('[SUCCESS] House deleted successfully');
     } catch (e) {
-      print('[ERROR] Failed to delete house: $e');
+      // print('[ERROR] Failed to delete house: $e');
     } finally {
       await conn.close();
     }
@@ -197,12 +250,32 @@ class DatabaseService {
       }
       return null; // House not found
     } catch (e) {
-      print('[ERROR] Failed to retrieve house ID: $e');
+      // print('[ERROR] Failed to retrieve house ID: $e');
       return null;
     } finally {
       await conn.close();
     }
   }
+
+  static Future<void> insertRoom(Room room) async {
+    final conn = await MySqlConnection.connect(settings);
+    try {
+      await conn.query(
+        'INSERT INTO rooms (name, position, width, height, isGrouped, connectedRoom, connectedWall, houseName, sensors) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [
+          room.name, room.position.toString(), room.width, room.height,
+          room.isGrouped ? 1 : 0, room.connectedRoom,
+          room.connectedWall, room.houseName, room.sensors
+        ]
+      );
+      print('[SUCCESS] Added room "${room.name}" to server.');
+    } catch (e) {
+      print('[ERROR] Failed to insert room: $e');
+    } finally {
+      await conn.close();
+    }
+  }
+
 
   // **SQL MANAGEMENT FUNCTIONS (FOR `ManageSQLPage`)**
 
@@ -213,7 +286,7 @@ class DatabaseService {
       final results = await conn.query('SELECT * FROM `$tableName`');
       return results.map((row) => row.fields).toList();
     } catch (e) {
-      print('[ERROR] Failed to query table: $e');
+      // print('[ERROR] Failed to query table: $e');
       return [];
     } finally {
       await conn.close();
@@ -230,9 +303,9 @@ class DatabaseService {
       var query = 'INSERT INTO `$tableName` ($fields) VALUES ($placeholders)';
 
       await conn.query(query, values);
-      print('[SUCCESS] Data inserted successfully into $tableName');
+      // print('[SUCCESS] Data inserted successfully into $tableName');
     } catch (e) {
-      print('[ERROR] Failed to insert data: $e');
+      // print('[ERROR] Failed to insert data: $e');
     } finally {
       await conn.close();
     }
@@ -244,9 +317,9 @@ class DatabaseService {
     try {
       final query = 'DELETE FROM `$tableName` WHERE $condition';
       await conn.query(query);
-      print('[SUCCESS] Data deleted from $tableName');
+      // print('[SUCCESS] Data deleted from $tableName');
     } catch (e) {
-      print('[ERROR] Failed to delete data: $e');
+      // print('[ERROR] Failed to delete data: $e');
     } finally {
       await conn.close();
     }

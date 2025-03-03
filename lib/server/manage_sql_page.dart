@@ -67,7 +67,7 @@ Future<void> _fetchTableData() async {
       _tableData = data;
     });
   } catch (e) {
-    print('[ERROR] Failed to fetch table data: $e');
+    // print('[ERROR] Failed to fetch table data: $e');
   } finally {
     setState(() => _isLoading = false);
   }
