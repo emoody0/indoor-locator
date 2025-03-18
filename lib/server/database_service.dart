@@ -57,10 +57,27 @@ class DatabaseService {
   /// **Insert a new user into the server**
   static Future<void> insertUser(Map<String, dynamic> userData) async {
     final conn = await MySqlConnection.connect(settings);
+
     try {
+      // Extract user data safely
+      final String name = userData['name']?.toString().trim() ?? '';
+      final String email = userData['email']?.toString().trim() ?? '';
+      final String userType = userData['userType']?.toString().trim() ?? 'User';
+      final int? houseId = userData['house'] is int
+          ? userData['house']
+          : int.tryParse(userData['house']?.toString() ?? '');
+
+      if (name.isEmpty || email.isEmpty) {
+        print("[ERROR] Name and Email cannot be empty.");
+        return;
+      }
+
       await conn.query(
-        'INSERT INTO Users (name, email, userType, house) VALUES (?, ?, ?, ?)',
-        [userData['name'], userData['email'], userData['userType'], userData['house']],
+        '''
+        INSERT INTO Users (name, email, userType, house_id)
+        VALUES (?, ?, ?, ?)
+        ''',
+        [name, email, userType, houseId],
       );
       // print('[SUCCESS] User inserted successfully');
     } catch (e) {

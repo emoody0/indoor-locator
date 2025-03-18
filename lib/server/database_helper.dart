@@ -264,27 +264,27 @@ class DatabaseHelper {
       // print("[DEBUG] No users found. Inserting default user...");
 
       // Insert a default user to bypass login issues
-      await insertUser({
-        'name': 'Default User',
-        'email': 'default@gmail.com',
-        'userType': 'User',
-        'house': 'No House',
-        'organization': 'DefaultOrg',
-        'start_window': 28800000,
-        'end_window': 72000000,
-        'is_default': 1,
-      });
+      // await insertUser({
+      //   'name': 'Default User',
+      //   'email': 'default@gmail.com',
+      //   'userType': 'User',
+      //   'house': 'No House',
+      //   'organization': 'DefaultOrg',
+      //   'start_window': 28800000,
+      //   'end_window': 72000000,
+      //   'is_default': 1,
+      // });
 
-      await insertUser({
-        'name': 'Default User two',
-        'email': 'default2@gmail.com',
-        'userType': 'Admin',
-        'house': 'No House',
-        'organization': 'DefaultOrg',
-        'start_window': 28800000,
-        'end_window': 72000000,
-        'is_default': 1,
-      });
+      // await insertUser({
+      //   'name': 'Default User two',
+      //   'email': 'default2@gmail.com',
+      //   'userType': 'Admin',
+      //   'house': 'No House',
+      //   'organization': 'DefaultOrg',
+      //   'start_window': 28800000,
+      //   'end_window': 72000000,
+      //   'is_default': 1,
+      // });
 
 
       results = await db.query('users'); // Retrieve again after inserting

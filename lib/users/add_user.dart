@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../config.dart'; // Import config file
-import '../server/database_helper.dart';
+import 'package:g14_indoor_locator/server/database_service.dart';
 
 class AddUserPage extends StatefulWidget {
   const AddUserPage({super.key});
@@ -20,15 +20,18 @@ class _AddUserPageState extends State<AddUserPage> {
   @override
   void initState() {
     super.initState();
-    _loadHouseOptions(); // Load house options from the database
+    _loadHouseOptions(); // Load house options from MariaDB
   }
 
   Future<void> _loadHouseOptions() async {
-    final db = DatabaseHelper();
-    final options = await db.getDistinctHouseNames(); // Fetch distinct house names
-    setState(() {
-      houseOptions = options; // Update the options
-    });
+    try {
+      final houses = await DatabaseService.fetchHouses(); // Fetch houses from MariaDB
+      setState(() {
+        houseOptions = houses.map((house) => house['name'].toString()).toList();
+      });
+    } catch (e) {
+      print("[ERROR] Failed to load house options: $e");
+    }
   }
 
   bool isValidEmail(String email) {
@@ -76,29 +79,48 @@ class _AddUserPageState extends State<AddUserPage> {
   }
 
   void _validateAndSave() async {
-    final name = nameController.text;
-    final email = emailController.text;
+    final name = nameController.text.trim();
+    final email = emailController.text.trim();
 
     if (name.isEmpty || email.isEmpty || selectedHouse == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please fill in all fields.')),
       );
-    } else if (!isValidName(name)) {
+      return;
+    }
+
+    if (!isValidName(name)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Name should only contain alphabetic characters.')),
       );
-    } else if (!isValidEmail(email)) {
+      return;
+    }
+
+    if (!isValidEmail(email)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Email must be a valid Gmail account.')),
       );
-    } else {
-      final db = DatabaseHelper();
-      await db.insertUser({
+      return;
+    }
+
+    try {
+      // Fetch the house ID from MariaDB
+      int? houseId = await DatabaseService.getHouseIdByName(selectedHouse!);
+
+      if (houseId == null) {
+        print("[ERROR] House ID not found for house: $selectedHouse");
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Invalid house selection.')),
+        );
+        return;
+      }
+
+      // Insert into MariaDB
+      await DatabaseService.insertUser({
         'name': name,
         'email': email,
         'userType': userType,
-        'house': selectedHouse,
-        'organization': 'DefaultOrg', // Adjust as necessary
+        'house': houseId, // Using the house ID instead of house name
       });
 
       setState(() {
@@ -110,19 +132,24 @@ class _AddUserPageState extends State<AddUserPage> {
       );
 
       Navigator.pop(context);
+    } catch (e) {
+      print("[ERROR] Failed to insert user: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to save user: $e')),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      onPopInvokedWithResult: (didPop,result) async {
+      onPopInvokedWithResult: (didPop, result) async {
         if (!didPop) return;
         if (!await _canPop()) {
           return;
         }
         Navigator.pop(context);
-      }, 
+      },
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Add User'),
