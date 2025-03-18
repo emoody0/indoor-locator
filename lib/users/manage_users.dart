@@ -24,7 +24,8 @@ class _ManageUsersPageState extends State<ManageUsersPage> {
   }
 
   Future<void> _loadUsers() async {
-    final fetchedUsers = await DatabaseService.fetchUsers();
+    final dbService = DatabaseService();
+    final fetchedUsers = await dbService.fetchUsers();
     setState(() {
       users = fetchedUsers.map((user) {
         user['id'] = user['id'].toString(); // Ensure UUIDs are stored as Strings

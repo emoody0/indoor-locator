@@ -4,7 +4,7 @@ import '../houses/room.dart'; // Adjust path if needed
 
 class DatabaseService {
   static final ConnectionSettings settings = ConnectionSettings(
-    host: '192.168.90.63',
+    host: '192.168.77.63',
     port: 3306,
     user: 'homeassistant',
     password: 'SQL123!',
@@ -25,18 +25,34 @@ class DatabaseService {
   // **USER MANAGEMENT FUNCTIONS**
 
   /// **Fetch all users from the server**
-  static Future<List<Map<String, dynamic>>> fetchUsers() async {
+  Future<List<Map<String, dynamic>>> fetchUsers() async {
     final conn = await MySqlConnection.connect(settings);
     try {
       final results = await conn.query('SELECT * FROM Users');
-      return results.map((row) => row.fields).toList();
+      return results.map((row) {
+        return {
+          'id': row['id'].toString(),
+          'name': row['name']?.toString() ?? '',
+          'email': row['email']?.toString() ?? '',
+          'userType': row['userType']?.toString() ?? '',
+          'house': row['house']?.toString() ?? '',
+          'start_window': row['start_window'] is int
+              ? row['start_window']
+              : int.tryParse(row['start_window'].toString()) ?? 28800000,
+          'end_window': row['end_window'] is int
+              ? row['end_window']
+              : int.tryParse(row['end_window'].toString()) ?? 72000000,
+        };
+      }).toList();
     } catch (e) {
-      // print('[ERROR] Failed to fetch users: $e');
+      print("[ERROR] Failed to fetch users: $e");
       return [];
     } finally {
       await conn.close();
     }
   }
+
+
 
   /// **Insert a new user into the server**
   static Future<void> insertUser(Map<String, dynamic> userData) async {
@@ -175,7 +191,7 @@ class DatabaseService {
     final conn = await MySqlConnection.connect(settings);
     try {
       final results = await conn.query(
-        'SELECT * FROM rooms WHERE houseName = ?',
+        'SELECT * FROM Rooms WHERE houseName = ?',
         [houseName]
       );
       return results.map((row) => row.fields).toList();
@@ -191,7 +207,7 @@ class DatabaseService {
     final conn = await MySqlConnection.connect(settings);
     try {
       await conn.query(
-        'DELETE FROM rooms WHERE houseName = ? AND name = ?',
+        'DELETE FROM Rooms WHERE houseName = ? AND name = ?',
         [houseName, roomName]
       );
       print('[SUCCESS] Deleted room "$roomName" from server.');
@@ -206,7 +222,7 @@ class DatabaseService {
     final conn = await MySqlConnection.connect(settings);
     try {
       await conn.query(
-        'UPDATE rooms SET position = ?, width = ?, height = ?, isGrouped = ?, connectedRoom = ?, connectedWall = ?, sensors = ? WHERE houseName = ? AND name = ?',
+        'UPDATE Rooms SET position = ?, width = ?, height = ?, isGrouped = ?, connectedRoom = ?, connectedWall = ?, sensors = ? WHERE houseName = ? AND name = ?',
         [
           room.position.toString(), room.width, room.height,
           room.isGrouped ? 1 : 0, room.connectedRoom,
@@ -261,7 +277,7 @@ class DatabaseService {
     final conn = await MySqlConnection.connect(settings);
     try {
       await conn.query(
-        'INSERT INTO rooms (name, position, width, height, isGrouped, connectedRoom, connectedWall, houseName, sensors) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        'INSERT INTO Rooms (name, position, width, height, isGrouped, connectedRoom, connectedWall, houseName, sensors) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
         [
           room.name, room.position.toString(), room.width, room.height,
           room.isGrouped ? 1 : 0, room.connectedRoom,
