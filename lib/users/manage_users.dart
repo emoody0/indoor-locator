@@ -117,7 +117,7 @@ class _ManageUsersPageState extends State<ManageUsersPage> {
                             context,
                             MaterialPageRoute(
                               builder: (context) => EditUserPage(
-                                id: user['id'], // Pass the user ID
+                                id: user['id'].toString(), // Pass the user ID
                                 name: user['name'],
                                 email: user['email'],
                                 house: user['house'],

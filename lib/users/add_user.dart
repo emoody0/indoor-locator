@@ -116,12 +116,12 @@ class _AddUserPageState extends State<AddUserPage> {
       }
 
       // Insert into MariaDB
-      await DatabaseService.insertUser({
-        'name': name,
-        'email': email,
-        'userType': userType,
-        'house': houseId, // Using the house ID instead of house name
-      });
+      await DatabaseService.insertUser ({
+      'name': name,
+      'email': email,
+      'userType': userType,
+      'house_id': houseId, 
+    });
 
       setState(() {
         isSaved = true;

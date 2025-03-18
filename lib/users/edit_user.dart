@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import '../config.dart'; // Import config file
-import '../server/database_helper.dart'; // Import DatabaseHelper for user data handling
+import 'package:g14_indoor_locator/server/database_service.dart';
 
 class EditUserPage extends StatefulWidget {
-  final int id; // User ID
+  final String id; // User ID
   final String name;
   final String email;
   final String house;
@@ -30,7 +30,6 @@ class _EditUserPageState extends State<EditUserPage> {
   bool isSaved = false; // Tracks if the user clicked the Save button
   bool hasChanges = false; // Tracks if any changes were made
 
-  final DatabaseHelper dbHelper = DatabaseHelper(); // Database helper instance
   List<String> houseOptions = []; // Dynamic house options
 
   @override
@@ -41,15 +40,25 @@ class _EditUserPageState extends State<EditUserPage> {
     emailController = TextEditingController(text: widget.email);
     selectedHouse = widget.house;
 
-    _loadHouseOptions(); // Load house options
+    _loadHouseOptions(); // Load house options from MariaDB
   }
 
   Future<void> _loadHouseOptions() async {
-    final options = await dbHelper.getDistinctHouseNames(); // Fetch house names
-    setState(() {
-      houseOptions = options;
-    });
+    try {
+      final houses = await DatabaseService.fetchHouses(); // Fetch houses from MariaDB
+      setState(() {
+        houseOptions = houses.map((house) => house['name'].toString()).toList();
+
+        // Ensure selectedHouse is valid or reset it
+        if (selectedHouse != null && !houseOptions.contains(selectedHouse)) {
+          selectedHouse = null;
+        }
+      });
+    } catch (e) {
+      print("[ERROR] Failed to load house options: $e");
+    }
   }
+
 
   bool isValidEmail(String email) {
     final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@gmail\.com$');
@@ -105,8 +114,8 @@ class _EditUserPageState extends State<EditUserPage> {
   }
 
   Future<void> _validateAndSave() async {
-    final name = nameController.text;
-    final email = emailController.text;
+    final name = nameController.text.trim();
+    final email = emailController.text.trim();
 
     if (name.isEmpty || email.isEmpty || selectedHouse == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -114,25 +123,45 @@ class _EditUserPageState extends State<EditUserPage> {
           content: Text('Please fill in all fields.'),
         ),
       );
-    } else if (!isValidName(name)) {
+      return;
+    }
+
+    if (!isValidName(name)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Name should only contain alphabetic characters.'),
         ),
       );
-    } else if (!isValidEmail(email)) {
+      return;
+    }
+
+    if (!isValidEmail(email)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Email must be a valid Gmail account (e.g., user@gmail.com).'),
+          content: Text('Email must be a valid Gmail account.'),
         ),
       );
-    } else {
-      // Save to database
-      await dbHelper.updateUser(widget.id, {
+      return;
+    }
+
+    try {
+      // Fetch the house ID from MariaDB
+      int? houseId = await DatabaseService.getHouseIdByName(selectedHouse!);
+
+      if (houseId == null) {
+        print("[ERROR] House ID not found for house: $selectedHouse");
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Invalid house selection.')),
+        );
+        return;
+      }
+
+      // Update in MariaDB
+      await DatabaseService.updateUser(widget.id, {
         'name': name,
         'email': email,
         'userType': userType,
-        'house': selectedHouse,
+        'house': houseId, // Using the house ID instead of house name
       });
 
       setState(() {
@@ -147,6 +176,11 @@ class _EditUserPageState extends State<EditUserPage> {
       );
 
       Navigator.pop(context); // Go back after saving
+    } catch (e) {
+      print("[ERROR] Failed to update user: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to update user: $e')),
+      );
     }
   }
 
@@ -251,14 +285,6 @@ class _EditUserPageState extends State<EditUserPage> {
                   });
                 },
               ),
-              if (selectedHouse == null && houseOptions.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.only(top: 8.0),
-                  child: Text(
-                    'No houses available. Please create a house first.',
-                    style: TextStyle(color: Colors.red),
-                  ),
-                ),
               const SizedBox(height: 30),
 
               Center(

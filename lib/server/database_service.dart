@@ -88,7 +88,7 @@ class DatabaseService {
   }
 
   /// **Update an existing user**
-  static Future<void> updateUser(int userId, Map<String, dynamic> updatedData) async {
+  static Future<void> updateUser(String userId, Map<String, dynamic> updatedData) async {
     final conn = await MySqlConnection.connect(settings);
     try {
       await conn.query(
