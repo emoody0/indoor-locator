@@ -92,16 +92,21 @@ class DatabaseService {
     final conn = await MySqlConnection.connect(settings);
     try {
       await conn.query(
-        'UPDATE Users SET name = ?, email = ?, userType = ?, house = ? WHERE id = ?',
-        [updatedData['name'], updatedData['email'], updatedData['userType'], updatedData['house'], userId],
+        '''
+        UPDATE Users 
+        SET name = ?, email = ?, userType = ?, house_id = ? 
+        WHERE id = ?
+        ''',
+        [updatedData['name'], updatedData['email'], updatedData['userType'], updatedData['house_id'], userId],
       );
-      // print('[SUCCESS] User updated successfully');
+      print('[SUCCESS] User updated successfully');
     } catch (e) {
-      // print('[ERROR] Failed to update user: $e');
+      print('[ERROR] Failed to update user: $e');
     } finally {
       await conn.close();
     }
   }
+
 
   /// **Delete a user**
   static Future<void> deleteUser(String userId) async {
@@ -273,22 +278,28 @@ class DatabaseService {
   static Future<int?> getHouseIdByName(String houseName) async {
     final conn = await MySqlConnection.connect(settings);
     try {
+      print("[DEBUG] Querying house ID for house name: $houseName");
       var results = await conn.query(
-        'SELECT id FROM Houses WHERE name = ?',
+        'SELECT id FROM Houses WHERE name = ? LIMIT 1',
         [houseName]
       );
 
       if (results.isNotEmpty) {
+        print("[DEBUG] Found House ID: ${results.first[0]} for house: $houseName");
         return results.first[0] as int; // Retrieve house ID
+      } else {
+        print("[ERROR] No house found with name: $houseName");
+        return null; // House not found
       }
-      return null; // House not found
     } catch (e) {
-      // print('[ERROR] Failed to retrieve house ID: $e');
+      print('[ERROR] Failed to retrieve house ID: $e');
       return null;
     } finally {
       await conn.close();
     }
   }
+
+
 
   static Future<void> insertRoom(Room room) async {
     final conn = await MySqlConnection.connect(settings);

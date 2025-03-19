@@ -6,7 +6,7 @@ class EditUserPage extends StatefulWidget {
   final String id; // User ID
   final String name;
   final String email;
-  final String house;
+  final String house; // This is the house name from DB
   final String userType; // Admin or User
 
   const EditUserPage({
@@ -26,11 +26,11 @@ class _EditUserPageState extends State<EditUserPage> {
   late String userType;
   late TextEditingController nameController;
   late TextEditingController emailController;
-  String? selectedHouse;
-  bool isSaved = false; // Tracks if the user clicked the Save button
-  bool hasChanges = false; // Tracks if any changes were made
+  String? selectedHouseId; // Store house ID
+  bool isSaved = false;
+  bool hasChanges = false;
 
-  List<String> houseOptions = []; // Dynamic house options
+  List<Map<String, String>> houseOptions = []; // Store house ID and name
 
   @override
   void initState() {
@@ -38,7 +38,6 @@ class _EditUserPageState extends State<EditUserPage> {
     userType = widget.userType;
     nameController = TextEditingController(text: widget.name);
     emailController = TextEditingController(text: widget.email);
-    selectedHouse = widget.house;
 
     _loadHouseOptions(); // Load house options from MariaDB
   }
@@ -47,18 +46,23 @@ class _EditUserPageState extends State<EditUserPage> {
     try {
       final houses = await DatabaseService.fetchHouses(); // Fetch houses from MariaDB
       setState(() {
-        houseOptions = houses.map((house) => house['name'].toString()).toList();
+        houseOptions = houses.map((house) => {
+          'id': house['id'].toString(), // Store house ID as String
+          'name': house['name'].toString() // Store house name
+        }).toList();
 
-        // Ensure selectedHouse is valid or reset it
-        if (selectedHouse != null && !houseOptions.contains(selectedHouse)) {
-          selectedHouse = null;
-        }
+        // Convert house name to corresponding ID
+        final matchedHouse = houseOptions.firstWhere(
+          (house) => house['name'] == widget.house, // Match house name
+          orElse: () => {'id': '', 'name': ''}
+        );
+
+        selectedHouseId = matchedHouse['id']!.isNotEmpty ? matchedHouse['id'] : null; // Store the house ID
       });
     } catch (e) {
       print("[ERROR] Failed to load house options: $e");
     }
   }
-
 
   bool isValidEmail(String email) {
     final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@gmail\.com$');
@@ -70,46 +74,12 @@ class _EditUserPageState extends State<EditUserPage> {
     return name.isNotEmpty && nameRegex.hasMatch(name);
   }
 
-  Future<bool> showUnsavedChangesDialog() async {
-    return await showDialog<bool>(
-          context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              title: const Text('Unsaved Changes'),
-              content: const Text('Are you sure? Your current changes will be lost.'),
-              actions: <Widget>[
-                TextButton(
-                  child: const Text('No'),
-                  onPressed: () {
-                    Navigator.of(context).pop(false); // Dismiss and stay on the page
-                  },
-                ),
-                TextButton(
-                  child: const Text('Yes'),
-                  onPressed: () {
-                    Navigator.of(context).pop(true); // Confirm and go back
-                  },
-                ),
-              ],
-            );
-          },
-        ) ??
-        false; // Default to false if dismissed
-  }
-
-  Future<bool> _onWillPop() async {
-    if (!isSaved && hasChanges) {
-      return await showUnsavedChangesDialog();
-    }
-    return true; // Allow navigation if saved or no changes
-  }
-
   void trackChanges() {
     setState(() {
       hasChanges = userType != widget.userType ||
           nameController.text != widget.name ||
           emailController.text != widget.email ||
-          selectedHouse != widget.house;
+          selectedHouseId != widget.house;
     });
   }
 
@@ -117,65 +87,41 @@ class _EditUserPageState extends State<EditUserPage> {
     final name = nameController.text.trim();
     final email = emailController.text.trim();
 
-    if (name.isEmpty || email.isEmpty || selectedHouse == null) {
+    if (name.isEmpty || email.isEmpty || selectedHouseId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please fill in all fields.'),
-        ),
+        const SnackBar(content: Text('Please fill in all fields.')),
       );
       return;
     }
 
-    if (!isValidName(name)) {
+    // Convert selectedHouseId (String) to int
+    int? houseId = int.tryParse(selectedHouseId!);
+    if (houseId == null) {
+      print("[ERROR] Invalid house ID: $selectedHouseId");
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Name should only contain alphabetic characters.'),
-        ),
-      );
-      return;
-    }
-
-    if (!isValidEmail(email)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Email must be a valid Gmail account.'),
-        ),
+        const SnackBar(content: Text('Invalid house selection.')),
       );
       return;
     }
 
     try {
-      // Fetch the house ID from MariaDB
-      int? houseId = await DatabaseService.getHouseIdByName(selectedHouse!);
-
-      if (houseId == null) {
-        print("[ERROR] House ID not found for house: $selectedHouse");
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Invalid house selection.')),
-        );
-        return;
-      }
-
-      // Update in MariaDB
       await DatabaseService.updateUser(widget.id, {
         'name': name,
         'email': email,
         'userType': userType,
-        'house': houseId, // Using the house ID instead of house name
+        'house_id': houseId, // Store correct house ID
       });
 
       setState(() {
-        isSaved = true; // Mark as saved
-        hasChanges = false; // Reset change tracking
+        isSaved = true;
+        hasChanges = false;
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('User updated successfully!'),
-        ),
+        const SnackBar(content: Text('User updated successfully!')),
       );
 
-      Navigator.pop(context); // Go back after saving
+      Navigator.pop(context);
     } catch (e) {
       print("[ERROR] Failed to update user: $e");
       ScaffoldMessenger.of(context).showSnackBar(
@@ -187,18 +133,42 @@ class _EditUserPageState extends State<EditUserPage> {
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
-      onWillPop: _onWillPop,
+      onWillPop: () async {
+        if (!isSaved && hasChanges) {
+          return await showDialog<bool>(
+                context: context,
+                builder: (BuildContext context) {
+                  return AlertDialog(
+                    title: const Text('Unsaved Changes'),
+                    content: const Text('Are you sure? Your current changes will be lost.'),
+                    actions: <Widget>[
+                      TextButton(
+                        child: const Text('No'),
+                        onPressed: () {
+                          Navigator.of(context).pop(false); // Stay on page
+                        },
+                      ),
+                      TextButton(
+                        child: const Text('Yes'),
+                        onPressed: () {
+                          Navigator.of(context).pop(true); // Confirm exit
+                        },
+                      ),
+                    ],
+                  );
+                },
+              ) ??
+              false;
+        }
+        return true;
+      },
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Edit User'),
           backgroundColor: AppColors.colorScheme.primary,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
-            onPressed: () async {
-              if (await _onWillPop()) {
-                Navigator.pop(context);
-              }
-            },
+            onPressed: () => Navigator.pop(context),
           ),
         ),
         body: SingleChildScrollView(
@@ -206,10 +176,7 @@ class _EditUserPageState extends State<EditUserPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'User Type',
-                style: TextStyle(fontSize: 18),
-              ),
+              const Text('User Type', style: TextStyle(fontSize: 18)),
               Row(
                 children: [
                   Radio<String>(
@@ -237,56 +204,37 @@ class _EditUserPageState extends State<EditUserPage> {
                 ],
               ),
               const SizedBox(height: 20),
-
               TextField(
                 controller: nameController,
                 onChanged: (value) => trackChanges(),
-                decoration: InputDecoration(
-                  labelText: 'Name',
-                  border: const OutlineInputBorder(),
-                  errorText: isValidName(nameController.text) || nameController.text.isEmpty
-                      ? null
-                      : 'Name should only contain alphabetic characters',
-                ),
+                decoration: const InputDecoration(labelText: 'Name', border: OutlineInputBorder()),
               ),
               const SizedBox(height: 20),
-
               TextField(
                 controller: emailController,
                 onChanged: (value) => trackChanges(),
-                decoration: InputDecoration(
-                  labelText: 'Email (must be gmail.com)',
-                  border: const OutlineInputBorder(),
-                  errorText: isValidEmail(emailController.text) || emailController.text.isEmpty
-                      ? null
-                      : 'Email must be a valid Gmail account (e.g., user@gmail.com)',
-                ),
+                decoration: const InputDecoration(labelText: 'Email (must be gmail.com)', border: OutlineInputBorder()),
                 keyboardType: TextInputType.emailAddress,
               ),
               const SizedBox(height: 20),
-
-              const Text(
-                'House',
-                style: TextStyle(fontSize: 18),
-              ),
+              const Text('House', style: TextStyle(fontSize: 18)),
               DropdownButton<String>(
-                value: selectedHouse,
+                value: selectedHouseId,
                 hint: const Text('Select House'),
-                items: houseOptions.map<DropdownMenuItem<String>>((String value) {
+                items: houseOptions.map<DropdownMenuItem<String>>((house) {
                   return DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(value),
+                    value: house['id'], // Store house ID
+                    child: Text(house['name']!), // Show house name
                   );
                 }).toList(),
                 onChanged: (String? newValue) {
                   setState(() {
-                    selectedHouse = newValue;
+                    selectedHouseId = newValue; // Store selected house ID
                     trackChanges();
                   });
                 },
               ),
               const SizedBox(height: 30),
-
               Center(
                 child: ElevatedButton(
                   onPressed: hasChanges ? _validateAndSave : null,
