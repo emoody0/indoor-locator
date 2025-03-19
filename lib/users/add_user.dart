@@ -13,32 +13,45 @@ class _AddUserPageState extends State<AddUserPage> {
   String userType = 'User'; // Default user type
   final TextEditingController nameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
-  String? selectedHouseId; // Store selected house ID
-  bool isSaved = false;
+  int? selectedHouseId; // Store selected house ID as int
+  bool isSaved = false; // Tracks if the user clicked the Save button
   List<Map<String, dynamic>> houseOptions = []; // Stores house ID and name
 
   @override
   void initState() {
     super.initState();
-    _loadHouseOptions();
+    _loadHouseOptions(); // Load house options from MariaDB
   }
 
   Future<void> _loadHouseOptions() async {
     try {
-      final houses = await DatabaseService.fetchHouses();
+      final houses = await DatabaseService.fetchHouses(); // Fetch houses from MariaDB
       setState(() {
         houseOptions = houses.map((house) => {
-          'id': house['id'].toString(), // Store house ID as String
-          'name': house['name'].toString() // Store house name
+          'id': house['id'], // Store house ID as int
+          'name': house['name'].toString(), // Store house name
         }).toList();
 
+        // Default to the first available house if none is selected
         if (selectedHouseId == null && houseOptions.isNotEmpty) {
-          selectedHouseId = houseOptions.first['id']; // Default to first available house
+          selectedHouseId = houseOptions.first['id'];
         }
       });
+
+      print("[DEBUG] Loaded house options: $houseOptions");
     } catch (e) {
       print("[ERROR] Failed to load house options: $e");
     }
+  }
+
+  bool isValidEmail(String email) {
+    final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@gmail\.com$');
+    return emailRegex.hasMatch(email);
+  }
+
+  bool isValidName(String name) {
+    final nameRegex = RegExp(r'^[a-zA-Z\s]+$');
+    return name.isNotEmpty && nameRegex.hasMatch(name);
   }
 
   Future<void> _validateAndSave() async {
@@ -52,23 +65,27 @@ class _AddUserPageState extends State<AddUserPage> {
       return;
     }
 
-    // Ensure house ID is an integer
-    int? houseId = int.tryParse(selectedHouseId!);
-    if (houseId == null) {
-      print("[ERROR] Invalid house ID: $selectedHouseId");
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Invalid house selection.')),
-      );
-      return;
-    }
+    print("[DEBUG] Selected House ID before inserting: $selectedHouseId");
 
     try {
+      // Ensure house ID is valid
+      if (selectedHouseId == null) {
+        print("[ERROR] House ID is NULL before inserting user.");
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Invalid house selection.')),
+        );
+        return;
+      }
+
+      // Insert user into MariaDB
       await DatabaseService.insertUser({
         'name': name,
         'email': email,
         'userType': userType,
-        'house_id': houseId, // Store correct house ID
+        'house_id': selectedHouseId, // Pass house_id as an int
       });
+
+      print("[SUCCESS] User added successfully with House ID: $selectedHouseId");
 
       setState(() {
         isSaved = true;
@@ -78,7 +95,7 @@ class _AddUserPageState extends State<AddUserPage> {
         const SnackBar(content: Text('User added successfully!')),
       );
 
-      Navigator.pop(context);
+      Navigator.pop(context); // Go back after saving
     } catch (e) {
       print("[ERROR] Failed to add user: $e");
       ScaffoldMessenger.of(context).showSnackBar(
@@ -95,7 +112,9 @@ class _AddUserPageState extends State<AddUserPage> {
         backgroundColor: AppColors.colorScheme.primary,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            Navigator.pop(context);
+          },
         ),
       ),
       body: SingleChildScrollView(
@@ -110,7 +129,9 @@ class _AddUserPageState extends State<AddUserPage> {
                   value: 'Admin',
                   groupValue: userType,
                   onChanged: (String? value) {
-                    setState(() => userType = value!);
+                    setState(() {
+                      userType = value!;
+                    });
                   },
                 ),
                 const Text('Admin'),
@@ -118,41 +139,58 @@ class _AddUserPageState extends State<AddUserPage> {
                   value: 'User',
                   groupValue: userType,
                   onChanged: (String? value) {
-                    setState(() => userType = value!);
+                    setState(() {
+                      userType = value!;
+                    });
                   },
                 ),
                 const Text('User'),
               ],
             ),
             const SizedBox(height: 20),
+
             TextField(
               controller: nameController,
               decoration: const InputDecoration(labelText: 'Name', border: OutlineInputBorder()),
+              onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: 20),
+
             TextField(
               controller: emailController,
               decoration: const InputDecoration(labelText: 'Email (must be gmail.com)', border: OutlineInputBorder()),
               keyboardType: TextInputType.emailAddress,
+              onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: 20),
+
             const Text('House', style: TextStyle(fontSize: 18)),
-            DropdownButton<String>(
+            DropdownButton<int>(
               value: selectedHouseId,
               hint: const Text('Select House'),
-              items: houseOptions.map<DropdownMenuItem<String>>((house) {
-                return DropdownMenuItem<String>(
-                  value: house['id'],
-                  child: Text(house['name']!),
+              items: houseOptions.map<DropdownMenuItem<int>>((house) {
+                return DropdownMenuItem<int>(
+                  value: house['id'], // Store house ID as int
+                  child: Text(house['name']!), // Show house name
                 );
               }).toList(),
-              onChanged: (String? newValue) {
+              onChanged: (int? newValue) {
                 setState(() {
                   selectedHouseId = newValue; // Store selected house ID
+                  print("[DEBUG] Selected House ID: $selectedHouseId");
                 });
               },
             ),
+            if (houseOptions.isEmpty)
+              const Padding(
+                padding: EdgeInsets.only(top: 8.0),
+                child: Text(
+                  'No houses available. Please create a house first.',
+                  style: TextStyle(color: Colors.red),
+                ),
+              ),
             const SizedBox(height: 30),
+
             Center(
               child: ElevatedButton(
                 onPressed: _validateAndSave,

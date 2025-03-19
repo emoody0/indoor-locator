@@ -63,29 +63,34 @@ class DatabaseService {
       final String name = userData['name']?.toString().trim() ?? '';
       final String email = userData['email']?.toString().trim() ?? '';
       final String userType = userData['userType']?.toString().trim() ?? 'User';
-      final int? houseId = userData['house'] is int
-          ? userData['house']
-          : int.tryParse(userData['house']?.toString() ?? '');
+      final int? houseId = userData['house_id'] is int
+          ? userData['house_id']
+          : int.tryParse(userData['house_id']?.toString() ?? '');
 
       if (name.isEmpty || email.isEmpty) {
         print("[ERROR] Name and Email cannot be empty.");
         return;
       }
 
+      print("[DEBUG] Final House ID before insert: $houseId");
+
+      // Make sure we're inserting a valid house_id
       await conn.query(
         '''
         INSERT INTO Users (name, email, userType, house_id)
         VALUES (?, ?, ?, ?)
         ''',
-        [name, email, userType, houseId],
+        [name, email, userType, houseId ?? null], // Ensure NULL is explicitly handled
       );
-      // print('[SUCCESS] User inserted successfully');
+
+      print('[SUCCESS] User inserted successfully into MariaDB.');
     } catch (e) {
-      // print('[ERROR] Failed to insert user: $e');
+      print('[ERROR] Failed to insert user into MariaDB: $e');
     } finally {
       await conn.close();
     }
   }
+
 
   /// **Update an existing user**
   static Future<void> updateUser(String userId, Map<String, dynamic> updatedData) async {
