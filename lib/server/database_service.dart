@@ -28,14 +28,25 @@ class DatabaseService {
   Future<List<Map<String, dynamic>>> fetchUsers() async {
     final conn = await MySqlConnection.connect(settings);
     try {
-      final results = await conn.query('SELECT * FROM Users');
+      final results = await conn.query('''
+        SELECT 
+          Users.id,
+          Users.name,
+          Users.email,
+          Users.userType,
+          Houses.name AS house
+        FROM Users
+        LEFT JOIN Houses ON Users.house_id = Houses.id
+      ''');
+
+
       return results.map((row) {
         return {
           'id': row['id'].toString(),
           'name': row['name']?.toString() ?? '',
           'email': row['email']?.toString() ?? '',
           'userType': row['userType']?.toString() ?? '',
-          'house': row['house']?.toString() ?? '',
+          'house': row['house']?.toString() ?? 'Unknown',
           'start_window': row['start_window'] is int
               ? row['start_window']
               : int.tryParse(row['start_window'].toString()) ?? 28800000,
@@ -45,12 +56,13 @@ class DatabaseService {
         };
       }).toList();
     } catch (e) {
-      print("[ERROR] Failed to fetch users: $e");
+      print("[ERROR] Failed to fetch users with house names: $e");
       return [];
     } finally {
       await conn.close();
     }
   }
+
 
 
 

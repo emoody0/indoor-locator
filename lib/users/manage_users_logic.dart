@@ -54,22 +54,15 @@ class ManageUsersLogic {
   }
 
   /// Navigate to the view user details page
-  void viewUser(Map<String, dynamic> user) {
+  Future<void> viewUser(Map<String, dynamic> user) async {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => ViewUserPage(
-          id: user['id'],
-          name: user['name'],
-          email: user['email'],
-          house: user['house'],
-          userType: user['userType'],
-          startWindow: user['start_window'],
-          endWindow: user['end_window'],
-        ),
+        builder: (context) => ViewUserPage(id: user['id']),
       ),
     );
   }
+
 
   /// Show confirmation dialog and delete user if confirmed
   Future<void> confirmDeleteUser(String userName, String id) async {
