@@ -21,7 +21,7 @@ class ManageUsersLogic {
   Future<void> loadUsers() async {
     final fetchedUsers = await db.fetchUsers();
     updateUsers(fetchedUsers.map((user) {
-      user['id'] = user['id'].toString(); // Ensure UUIDs are stored as Strings
+      user['id'] = user['id'].toString();
       return user;
     }).toList());
     updateSelectedIndex(null);

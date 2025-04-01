@@ -4,7 +4,7 @@ import '../config.dart'; // Import config file
 //import '../database_helper.dart';
 
 class ViewUserPage extends StatelessWidget {
-  final int id; // User ID
+  final String id; // User ID
   final String name;
   final String email;
   final String house;
@@ -47,7 +47,7 @@ class ViewUserPage extends StatelessWidget {
             ),
             const SizedBox(height: 20),
 
-            _buildDetailRow('User ID', id.toString()),
+            _buildDetailRow('User ID', id),
             _buildDetailRow('User Type', userType),
             _buildDetailRow('Name', name),
             _buildDetailRow('Email', email),
