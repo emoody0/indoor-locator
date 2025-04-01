@@ -34,20 +34,57 @@ class _NewHouseSetupPageState extends State<NewHouseSetupPage> {
     title = widget.houseName ?? 'New House Setup';
   }
 
-  void connectRooms(Room mainRoom, Room targetRoom, String wall, String alignment) {
-    setState(() {
-      if (mainRoom.groupId == null && targetRoom.groupId == null) {
-        mainRoom.groupId = nextGroupId;
-        targetRoom.groupId = nextGroupId;
-        nextGroupId++;
-      } else if (mainRoom.groupId != null) {
-        targetRoom.groupId = mainRoom.groupId;
-      } else {
-        mainRoom.groupId = targetRoom.groupId;
-      }
-      hasChanges = true;
-    });
-  }
+void connectRooms(Room mainRoom, Room targetRoom, String wall, String alignment) {
+  setState(() {
+    if (mainRoom.groupId == null && targetRoom.groupId == null) {
+      mainRoom.groupId = nextGroupId;
+      targetRoom.groupId = nextGroupId;
+      nextGroupId++;
+    } else if (mainRoom.groupId != null) {
+      targetRoom.groupId = mainRoom.groupId;
+    } else {
+      mainRoom.groupId = targetRoom.groupId;
+    }
+
+    double dx = 0;
+    double dy = 0;
+    double mainRight = mainRoom.position.dx + mainRoom.width * scaleFactor;
+    double mainBottom = mainRoom.position.dy + mainRoom.height * scaleFactor;
+    double targetWidth = targetRoom.width * scaleFactor;
+    double targetHeight = targetRoom.height * scaleFactor;
+
+    switch (wall) {
+      case 'left':
+        dx = mainRoom.position.dx - targetWidth;
+        dy = alignment == 'start'
+            ? mainRoom.position.dy
+            : mainBottom - targetHeight;
+        break;
+      case 'right':
+        dx = mainRight;
+        dy = alignment == 'start'
+            ? mainRoom.position.dy
+            : mainBottom - targetHeight;
+        break;
+      case 'top':
+        dx = alignment == 'start'
+            ? mainRoom.position.dx
+            : mainRight - targetWidth;
+        dy = mainRoom.position.dy - targetHeight;
+        break;
+      case 'bottom':
+        dx = alignment == 'start'
+            ? mainRoom.position.dx
+            : mainRight - targetWidth;
+        dy = mainBottom;
+        break;
+    }
+
+    targetRoom.position = Offset(dx, dy);
+    hasChanges = true;
+  });
+}
+
 
   void deleteRoom(Room room) {
     setState(() {
