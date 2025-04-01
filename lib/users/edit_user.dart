@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
-import '../config.dart'; // Import config file
-import 'package:g14_indoor_locator/server/database_service.dart';
+import '../config.dart';
+import 'manage_users_logic.dart';
 
 class EditUserPage extends StatefulWidget {
-  final String id; // User ID
+  final String id;
   final String name;
   final String email;
-  final String house; // This is the house name from DB
-  final String userType; // Admin or User
+  final String house;
+  final String userType;
 
   const EditUserPage({
     super.key,
@@ -26,54 +26,43 @@ class _EditUserPageState extends State<EditUserPage> {
   late String userType;
   late TextEditingController nameController;
   late TextEditingController emailController;
-  String? selectedHouseId; // Store house ID
+  String? selectedHouseId;
   bool isSaved = false;
   bool hasChanges = false;
+  List<Map<String, String>> houseOptions = [];
 
-  List<Map<String, String>> houseOptions = []; // Store house ID and name
+  late ManageUsersLogic logic;
 
   @override
   void initState() {
     super.initState();
+    logic = ManageUsersLogic(
+      context: context,
+      updateUsers: (_) {},
+      updateSelectedIndex: (_) {},
+    );
+
     userType = widget.userType;
     nameController = TextEditingController(text: widget.name);
     emailController = TextEditingController(text: widget.email);
 
-    _loadHouseOptions(); // Load house options from MariaDB
+    _loadHouseOptions();
   }
 
+  /// Load available houses
   Future<void> _loadHouseOptions() async {
-    try {
-      final houses = await DatabaseService.fetchHouses(); // Fetch houses from MariaDB
-      setState(() {
-        houseOptions = houses.map((house) => {
-          'id': house['id'].toString(), // Store house ID as String
-          'name': house['name'].toString() // Store house name
-        }).toList();
-
-        // Convert house name to corresponding ID
-        final matchedHouse = houseOptions.firstWhere(
-          (house) => house['name'] == widget.house, // Match house name
-          orElse: () => {'id': '', 'name': ''}
-        );
-
-        selectedHouseId = matchedHouse['id']!.isNotEmpty ? matchedHouse['id'] : null; // Store the house ID
-      });
-    } catch (e) {
-      print("[ERROR] Failed to load house options: $e");
-    }
+    final houses = await logic.loadHouseOptions();
+    setState(() {
+      houseOptions = houses;
+      final matchedHouse = houseOptions.firstWhere(
+        (house) => house['name'] == widget.house,
+        orElse: () => {'id': '', 'name': ''},
+      );
+      selectedHouseId = matchedHouse['id']!.isNotEmpty ? matchedHouse['id'] : null;
+    });
   }
 
-  bool isValidEmail(String email) {
-    final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@gmail\.com$');
-    return emailRegex.hasMatch(email);
-  }
-
-  bool isValidName(String name) {
-    final nameRegex = RegExp(r'^[a-zA-Z\s]+$');
-    return name.isNotEmpty && nameRegex.hasMatch(name);
-  }
-
+  /// Track changes to form fields
   void trackChanges() {
     setState(() {
       hasChanges = userType != widget.userType ||
@@ -83,51 +72,21 @@ class _EditUserPageState extends State<EditUserPage> {
     });
   }
 
-  Future<void> _validateAndSave() async {
-    final name = nameController.text.trim();
-    final email = emailController.text.trim();
-
-    if (name.isEmpty || email.isEmpty || selectedHouseId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill in all fields.')),
-      );
-      return;
-    }
-
-    // Convert selectedHouseId (String) to int
-    int? houseId = int.tryParse(selectedHouseId!);
-    if (houseId == null) {
-      print("[ERROR] Invalid house ID: $selectedHouseId");
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Invalid house selection.')),
-      );
-      return;
-    }
-
-    try {
-      await DatabaseService.updateUser(widget.id, {
-        'name': name,
-        'email': email,
-        'userType': userType,
-        'house_id': houseId, // Store correct house ID
-      });
-
-      setState(() {
-        isSaved = true;
-        hasChanges = false;
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('User updated successfully!')),
-      );
-
-      Navigator.pop(context);
-    } catch (e) {
-      print("[ERROR] Failed to update user: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to update user: $e')),
-      );
-    }
+  /// Validate and save user changes
+  void _saveUser() {
+    logic.validateAndUpdateUser(
+      id: widget.id,
+      name: nameController.text.trim(),
+      email: emailController.text.trim(),
+      userType: userType,
+      selectedHouseId: selectedHouseId,
+      onSuccess: () {
+        setState(() {
+          isSaved = true;
+          hasChanges = false;
+        });
+      },
+    );
   }
 
   @override
@@ -145,13 +104,13 @@ class _EditUserPageState extends State<EditUserPage> {
                       TextButton(
                         child: const Text('No'),
                         onPressed: () {
-                          Navigator.of(context).pop(false); // Stay on page
+                          Navigator.of(context).pop(false);
                         },
                       ),
                       TextButton(
                         child: const Text('Yes'),
                         onPressed: () {
-                          Navigator.of(context).pop(true); // Confirm exit
+                          Navigator.of(context).pop(true);
                         },
                       ),
                     ],
@@ -176,68 +135,17 @@ class _EditUserPageState extends State<EditUserPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('User Type', style: TextStyle(fontSize: 18)),
-              Row(
-                children: [
-                  Radio<String>(
-                    value: 'Admin',
-                    groupValue: userType,
-                    onChanged: (String? value) {
-                      setState(() {
-                        userType = value!;
-                        trackChanges();
-                      });
-                    },
-                  ),
-                  const Text('Admin'),
-                  Radio<String>(
-                    value: 'User',
-                    groupValue: userType,
-                    onChanged: (String? value) {
-                      setState(() {
-                        userType = value!;
-                        trackChanges();
-                      });
-                    },
-                  ),
-                  const Text('User'),
-                ],
-              ),
+              _buildRadioButtons(),
               const SizedBox(height: 20),
-              TextField(
-                controller: nameController,
-                onChanged: (value) => trackChanges(),
-                decoration: const InputDecoration(labelText: 'Name', border: OutlineInputBorder()),
-              ),
+              _buildTextField(nameController, 'Name'),
               const SizedBox(height: 20),
-              TextField(
-                controller: emailController,
-                onChanged: (value) => trackChanges(),
-                decoration: const InputDecoration(labelText: 'Email (must be gmail.com)', border: OutlineInputBorder()),
-                keyboardType: TextInputType.emailAddress,
-              ),
+              _buildTextField(emailController, 'Email (must be gmail.com)', TextInputType.emailAddress),
               const SizedBox(height: 20),
-              const Text('House', style: TextStyle(fontSize: 18)),
-              DropdownButton<String>(
-                value: selectedHouseId,
-                hint: const Text('Select House'),
-                items: houseOptions.map<DropdownMenuItem<String>>((house) {
-                  return DropdownMenuItem<String>(
-                    value: house['id'], // Store house ID
-                    child: Text(house['name']!), // Show house name
-                  );
-                }).toList(),
-                onChanged: (String? newValue) {
-                  setState(() {
-                    selectedHouseId = newValue; // Store selected house ID
-                    trackChanges();
-                  });
-                },
-              ),
+              _buildHouseDropdown(),
               const SizedBox(height: 30),
               Center(
                 child: ElevatedButton(
-                  onPressed: hasChanges ? _validateAndSave : null,
+                  onPressed: hasChanges ? _saveUser : null,
                   child: const Text('Save'),
                 ),
               ),
@@ -245,6 +153,67 @@ class _EditUserPageState extends State<EditUserPage> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildRadioButtons() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('User Type', style: TextStyle(fontSize: 18)),
+        Row(
+          children: [
+            _buildRadioButton('Admin'),
+            _buildRadioButton('User'),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRadioButton(String value) {
+    return Row(
+      children: [
+        Radio<String>(
+          value: value,
+          groupValue: userType,
+          onChanged: (String? newValue) {
+            setState(() {
+              userType = newValue!;
+              trackChanges();
+            });
+          },
+        ),
+        Text(value),
+      ],
+    );
+  }
+
+  Widget _buildTextField(TextEditingController controller, String label, [TextInputType type = TextInputType.text]) {
+    return TextField(
+      controller: controller,
+      onChanged: (value) => trackChanges(),
+      decoration: InputDecoration(labelText: label, border: const OutlineInputBorder()),
+      keyboardType: type,
+    );
+  }
+
+  Widget _buildHouseDropdown() {
+    return DropdownButton<String>(
+      value: selectedHouseId,
+      hint: const Text('Select House'),
+      items: houseOptions.map((house) {
+        return DropdownMenuItem<String>(
+          value: house['id'],
+          child: Text(house['name']!),
+        );
+      }).toList(),
+      onChanged: (String? newValue) {
+        setState(() {
+          selectedHouseId = newValue;
+          trackChanges();
+        });
+      },
     );
   }
 }

@@ -29,7 +29,7 @@ class _MQTTPageState extends State<MQTTPage> {
 
     // Generate a unique client ID
     String clientId = 'flutter_client_${DateTime.now().millisecondsSinceEpoch}';
-    client = MqttServerClient.withPort('192.168.96.63', clientId, 1883);
+    client = MqttServerClient.withPort('192.168.74.63', clientId, 1883);
     client!.logging(on: true);
     client!.keepAlivePeriod = 60;
     client!.onConnected = onConnected;

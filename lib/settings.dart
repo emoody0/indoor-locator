@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:g14_indoor_locator/houses/manage_houses.dart';
-import 'package:g14_indoor_locator/users/manage_users.dart';
+import 'package:g14_indoor_locator/users/manage_users_UI.dart';
 import 'config.dart'; // Import config file
 import '../time_windows/default_time_settings.dart'; // Import Default Time Settings Page
 // Import New House Setup Page

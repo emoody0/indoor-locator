@@ -82,11 +82,7 @@ class _ManageHousesPageState extends State<ManageHousesPage> {
                                 houseName: selectedHouseName,
                               ),
                             ),
-                          );
-
-                          // Sync the rooms to the server after editing
-                          await _updateHouseRooms(selectedHouseName);
-                          
+                          );                          
                           await _loadHouses(); // Reload house list after editing
                         }
                       : null,
