@@ -4,7 +4,7 @@ import '../houses/room.dart'; // Adjust path if needed
 
 class DatabaseService {
   static final ConnectionSettings settings = ConnectionSettings(
-    host: '192.168.74.63',
+    host: '192.168.119.63',
     port: 3306,
     user: 'homeassistant',
     password: 'SQL123!',
@@ -230,8 +230,8 @@ class DatabaseService {
     final conn = await MySqlConnection.connect(settings);
     try {
       final results = await conn.query(
-        'SELECT * FROM Rooms WHERE houseName = ?',
-        [houseName]
+        'SELECT * FROM Rooms WHERE house_name = ?',
+        [houseName],
       );
       return results.map((row) => row.fields).toList();
     } catch (e) {

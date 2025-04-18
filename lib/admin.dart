@@ -4,9 +4,8 @@ import 'config.dart';
 import 'settings.dart';
 import '../../log_view/view_logs.dart';
 import '../../log_view/view_alerts.dart';
-import '../../server/manage_sql_page.dart'; // Import the new SQL management page
 import '../../reports/reports.dart';
-import '../../server/mqtt.dart'; // This should export your MQTTPage widget
+import '../../location/live_location.dart';
 import 'main.dart';
 
 class AdminPortal extends StatelessWidget {
@@ -108,18 +107,6 @@ class AdminPortal extends StatelessWidget {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.table_chart),
-              title: const Text('Manage SQL Tables'),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const ManageSQLPage(),
-                  ),
-                );
-              },
-            ),
-            ListTile(
               leading: const Icon(Icons.analytics_outlined),
               title: const Text('Reports'),
               onTap: () {
@@ -135,12 +122,12 @@ class AdminPortal extends StatelessWidget {
             ),
             ListTile(
               leading: const Icon(Icons.network_wifi),
-              title: const Text('MQTT Data'),
+              title: const Text('User Location'),
               onTap: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const MQTTPage(),
+                    builder: (context) => const LiveLocationMapPage(),
                   ),
                 );
               },
