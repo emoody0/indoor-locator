@@ -5,7 +5,6 @@ import 'new_house_setup.dart'; // Import house setup page
 import '../server/database_service.dart';
 import 'view_house_page.dart';
 import 'room.dart';
-import 'dart:typed_data';
 
 
 class ManageHousesPage extends StatefulWidget {
@@ -224,50 +223,50 @@ class _ManageHousesPageState extends State<ManageHousesPage> {
     );
   }
 
-  Future<void> _updateHouseRooms(String houseName) async {
-    try {
-      print('[DEBUG] Syncing rooms for house: $houseName');
+  // Future<void> _updateHouseRooms(String houseName) async {
+  //   try {
+  //     print('[DEBUG] Syncing rooms for house: $houseName');
 
-      // Fetch rooms from local DB
-      final localRooms = await db.getRoomsByHouseName(houseName);
+  //     // Fetch rooms from local DB
+  //     final localRooms = await db.getRoomsByHouseName(houseName);
 
-      // Fetch rooms from server
-      final serverRooms = await DatabaseService.getRoomsByHouseName(houseName);
+  //     // Fetch rooms from server
+  //     final serverRooms = await DatabaseService.getRoomsByHouseName(houseName);
 
-      // Convert server rooms to a Set for easy comparison
-      final serverRoomNames = serverRooms.map((room) => room['name']).toSet();
-      final localRoomNames = localRooms.map((room) => room.name).toSet();
+  //     // Convert server rooms to a Set for easy comparison
+  //     final serverRoomNames = serverRooms.map((room) => room['name']).toSet();
+  //     final localRoomNames = localRooms.map((room) => room.name).toSet();
 
-      // Determine which rooms to delete from the server
-      final roomsToDelete = serverRooms.where((room) => !localRoomNames.contains(room['name'])).toList();
+  //     // Determine which rooms to delete from the server
+  //     final roomsToDelete = serverRooms.where((room) => !localRoomNames.contains(room['name'])).toList();
 
-      // Determine which rooms to update or add
-      final roomsToUpdate = localRooms.where((room) => serverRoomNames.contains(room.name)).toList();
-      final roomsToAdd = localRooms.where((room) => !serverRoomNames.contains(room.name)).toList();
+  //     // Determine which rooms to update or add
+  //     final roomsToUpdate = localRooms.where((room) => serverRoomNames.contains(room.name)).toList();
+  //     final roomsToAdd = localRooms.where((room) => !serverRoomNames.contains(room.name)).toList();
 
-      // Delete removed rooms from server
-      for (var room in roomsToDelete) {
-        await DatabaseService.deleteRoomByName(houseName, room['name']);
-        print('[SUCCESS] Deleted room "${room['name']}" from server.');
-      }
+  //     // Delete removed rooms from server
+  //     for (var room in roomsToDelete) {
+  //       await DatabaseService.deleteRoomByName(houseName, room['name']);
+  //       print('[SUCCESS] Deleted room "${room['name']}" from server.');
+  //     }
 
-      // Update existing rooms on server
-      for (var room in roomsToUpdate) {
-        await DatabaseService.updateRoom(room);
-        print('[SUCCESS] Updated room "${room.name}" on server.');
-      }
+  //     // Update existing rooms on server
+  //     for (var room in roomsToUpdate) {
+  //       await DatabaseService.updateRoom(room);
+  //       print('[SUCCESS] Updated room "${room.name}" on server.');
+  //     }
 
-      // Add new rooms to server
-      for (var room in roomsToAdd) {
-        await DatabaseService.insertRoom(room);
-        print('[SUCCESS] Added room "${room.name}" to server.');
-      }
+  //     // Add new rooms to server
+  //     for (var room in roomsToAdd) {
+  //       await DatabaseService.insertRoom(room);
+  //       print('[SUCCESS] Added room "${room.name}" to server.');
+  //     }
 
-      print('[SUCCESS] Room sync completed for house: $houseName');
-    } catch (e) {
-      print('[ERROR] Failed to sync rooms for house: $houseName - $e');
-    }
-  }
+  //     print('[SUCCESS] Room sync completed for house: $houseName');
+  //   } catch (e) {
+  //     print('[ERROR] Failed to sync rooms for house: $houseName - $e');
+  //   }
+  // }
 
   void _showHouseDetails(String houseName) async {
     // Fetch rooms and remove duplicates
