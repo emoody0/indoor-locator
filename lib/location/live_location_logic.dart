@@ -9,8 +9,7 @@ import 'package:flutter/material.dart';
 import '../houses/room.dart';
 import '../houses/sensor.dart';
 import '../server/database_service.dart';
-import '../server/mqtt.dart' show uwbPayload$;
-
+import '../server/mqtt.dart';
 
 class LiveLocationLogic extends ChangeNotifier {
   List<Map<String, dynamic>> houseOptions = [];
@@ -26,6 +25,7 @@ class LiveLocationLogic extends ChangeNotifier {
   }
 
   Future<void> _initialise() async {
+    await startMqttConnection();
     await _loadHouseList();
     _subscribeToUwbStream();
 
@@ -54,7 +54,7 @@ class LiveLocationLogic extends ChangeNotifier {
     try {
       final decoded = jsonDecode(jsonStr);
       final links = decoded['links'] as List<dynamic>;
-      if (links.length < 3) return null;
+      if (links.length < 2) return null;
 
       const m2ft = 3.28084;
       final anchors = {
