@@ -1,46 +1,86 @@
 // ──────────────────────────────────────────────────────────────
-//  live_location_logic.dart  (state‑management / data layer)
-//  reverted to call static DatabaseService helpers directly
+//  live_location_logic.dart  (uses mqtt.dart + trilateration)
 // ──────────────────────────────────────────────────────────────
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../houses/room.dart';
 import '../houses/sensor.dart';
 import '../server/database_service.dart';
-import '../server/uwb_mqtt_service.dart';
+import '../server/mqtt.dart' show uwbPayload$;
 
-/// Central ChangeNotifier that keeps MQTT tag‑position, house/room list
-/// and refreshes rooms every 30 seconds.
+
 class LiveLocationLogic extends ChangeNotifier {
-  // ───────── public reactive state ──────────
   List<Map<String, dynamic>> houseOptions = [];
   String? selectedHouseName;
   List<Room> rooms = [];
   Offset? tagPosition;
 
-  // ───────── private ──────────
-  late final UwbMqttService _mqtt;
+  StreamSubscription? _mqttSub;
   Timer? _refreshTimer;
 
   LiveLocationLogic() {
     _initialise();
   }
 
-  // initialise: load houses, setup mqtt, periodic refresh
   Future<void> _initialise() async {
     await _loadHouseList();
-    _initMqtt();
+    _subscribeToUwbStream();
 
     _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       _loadRoomsForSelected();
     });
   }
 
-  // ───────── DB helpers ──────────
+  void _subscribeToUwbStream() {
+    _mqttSub = uwbPayload$.stream.listen((json) {
+      if (json.isEmpty) return;
+      if (json == 'N/A') {
+        debugPrint('[LiveLocation] No UWB data received');
+        return;
+      }
+      final pos = _parsePosition(json);
+      if (pos != null) {
+        debugPrint('[LiveLocation] Position received: $pos');
+        tagPosition = pos;
+        notifyListeners();
+      }
+    });
+  }
+
+  Offset? _parsePosition(String jsonStr) {
+    try {
+      final decoded = jsonDecode(jsonStr);
+      final links = decoded['links'] as List<dynamic>;
+      if (links.length < 3) return null;
+
+      const m2ft = 3.28084;
+      final anchors = {
+        '1786': const Offset(0, 0),
+        '1783': const Offset(20, 0),
+        '1790': const Offset(0, 20),
+      };
+
+      double sx = 0, sy = 0, sw = 0;
+      for (final e in links) {
+        final id = e['A'].toString().toUpperCase();
+        if (!anchors.containsKey(id)) continue;
+        final d = double.parse(e['R'].toString()) * m2ft;
+        final w = d <= 0 ? 1 : 1 / d;
+        final pos = anchors[id]!;
+        sx += pos.dx * w;
+        sy += pos.dy * w;
+        sw += w;
+      }
+      if (sw == 0) return null;
+      return Offset(sx / sw, sy / sw);
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> _loadHouseList() async {
     try {
       final raw = await DatabaseService.fetchHouses();
@@ -72,22 +112,7 @@ class LiveLocationLogic extends ChangeNotifier {
     }
   }
 
-  // ───────── MQTT ──────────
-  void _initMqtt() {
-    _mqtt = UwbMqttService(
-      brokerIp: '192.168.119.63',
-      topic: 'homeassistant/esp32/location',
-      onTagPositionUpdate: (p) {
-        tagPosition = p;
-        notifyListeners();
-      },
-    );
-    _mqtt.connect();
-  }
-
-  // ───────── utilities ──────────
   Room _roomFromDb(Map<String, dynamic> r) {
-    // Sensors JSON can be NULL / BLOB so guard aggressively
     List<Sensor> sensors = [];
     final sJson = r['sensors'];
     if (sJson != null && sJson.toString().isNotEmpty) {
@@ -117,7 +142,6 @@ class LiveLocationLogic extends ChangeNotifier {
     return v.toString();
   }
 
-  // Public API -------------------------------------------------------------
   Future<void> changeHouse(String? newName) async {
     selectedHouseName = newName;
     notifyListeners();
@@ -127,6 +151,7 @@ class LiveLocationLogic extends ChangeNotifier {
   @override
   void dispose() {
     _refreshTimer?.cancel();
+    _mqttSub?.cancel();
     super.dispose();
   }
 }

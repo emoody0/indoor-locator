@@ -39,6 +39,12 @@ class _LiveLocationView extends StatelessWidget {
       body: Column(
         children: [
           _houseDropdown(logic),
+          Text(
+              logic.tagPosition == null
+                  ? 'Waiting for UWB data…'
+                  : 'Last fix: ${DateTime.now().toLocal().toIso8601String().substring(11,19)}',
+              style: const TextStyle(fontSize: 12, color: Colors.black54),
+            ),
           Expanded(
             child: InteractiveViewer(
               maxScale: 3,
