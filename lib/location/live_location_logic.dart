@@ -58,10 +58,11 @@ class LiveLocationLogic extends ChangeNotifier {
 
       const m2ft = 3.28084;
       final anchors = {
-        '1786': const Offset(0, 0),
-        '1783': const Offset(20, 0),
-        '1790': const Offset(0, 20),
+        '1786': const Offset(82.6, 265.4),  // use actual Room(0)'s offset
+        '1783': const Offset(102.6, 265.4), // example: +20 feet east
+        '1790': const Offset(82.6, 285.4),  // example: +20 feet south
       };
+
 
       double sx = 0, sy = 0, sw = 0;
       for (final e in links) {
