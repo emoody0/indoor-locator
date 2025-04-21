@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:g14_indoor_locator/server/mqtt.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'config.dart';
 import 'settings.dart';
@@ -121,6 +122,15 @@ class AdminPortal extends StatelessWidget {
                 );
               },
             ),
+            // ListTile(
+            //   title: const Text('MQTT Debug'),
+            //   onTap: () {
+            //     Navigator.push(
+            //       context,
+            //       MaterialPageRoute(builder: (context) => const MQTTPage()),
+            //     );
+            //   },
+            // ),
             ListTile(
               leading: const Icon(Icons.network_wifi),
               title: const Text('User Location'),

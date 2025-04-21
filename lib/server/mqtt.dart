@@ -1,187 +1,121 @@
-// import 'package:flutter/material.dart';
-// import 'package:mqtt_client/mqtt_client.dart';
-// import 'package:mqtt_client/mqtt_server_client.dart';
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:mqtt_client/mqtt_client.dart';
+import 'package:mqtt_client/mqtt_server_client.dart';
 
-// class MQTTPage extends StatefulWidget {
-//   const MQTTPage({super.key});
+final StreamController<String> uwbPayload$ = StreamController<String>.broadcast();
 
-//   @override
-//   _MQTTPageState createState() => _MQTTPageState();
-// }
+class MQTTPage extends StatefulWidget {
+  const MQTTPage({super.key});
 
-// class _MQTTPageState extends State<MQTTPage> {
-//   MqttServerClient? client;
-//   String status = 'Disconnected';
-//   bool isConnected = false; // To track connection status
-//   String _distanceValue = "N/A"; // Holds the received distance data
+  @override
+  State<MQTTPage> createState() => _MQTTPageState();
+}
 
-//   @override
-//   void initState() {
-//     super.initState();
-//     connectToBroker();
-//   }
+class _MQTTPageState extends State<MQTTPage> {
 
-//   Future<void> connectToBroker() async {
-//     setState(() {
-//       status = 'Connecting...';
-//       isConnected = false;
-//     });
+  MqttServerClient? client;
+  String status = 'Disconnected';
+  bool isConnected = false;
+  String _lastJson = 'N/A';
 
-//     // Generate a unique client ID
-//     String clientId = 'flutter_client_${DateTime.now().millisecondsSinceEpoch}';
-//     client = MqttServerClient.withPort('192.168.119.63', clientId, 1883);
-//     client!.logging(on: true);
-//     client!.keepAlivePeriod = 60;
-//     client!.onConnected = onConnected;
-//     client!.onDisconnected = onDisconnected;
-//     client!.onUnsubscribed = onUnsubscribed;
-//     client!.onSubscribed = onSubscribed;
-//     client!.onSubscribeFail = onSubscribeFail;
-//     client!.pongCallback = pong;
+  @override
+  void initState() {
+    super.initState();
+    _connect();
+  }
 
-//     final connMess = MqttConnectMessage()
-//         .authenticateAs("flutter_client", "flutter_client!")
-//         .withWillTopic('willtopic')
-//         .withWillMessage('My Will message')
-//         .startClean()
-//         .withWillQos(MqttQos.atLeastOnce);
-//     client!.connectionMessage = connMess;
+  Future<void> _connect() async {
+    const brokerIp = '192.168.119.63';
+    const port = 1883;
+    const username = 'flutter_client';
+    const password = 'flutter_client!';
+    const topic = 'homeassistant/esp32/location';
+    const clientId = 'flutter_client';
 
-//     try {
-//       await client!.connect();
-//     } catch (e) {
-//       print('Exception: $e');
-//       client!.disconnect();
-//     }
-//   }
+    client = MqttServerClient.withPort(brokerIp, clientId, port);
+    client!.logging(on: true);
+    client!.keepAlivePeriod = 60;
+    client!.onConnected = _onConnected;
+    client!.onDisconnected = _onDisconnected;
+    client!.onSubscribed = _onSubscribed;
+    client!.onSubscribeFail = _onSubscribeFail;
+    client!.pongCallback = _onPong;
 
-//   // Called when the client connects successfully.
-//   void onConnected() {
-//     setState(() {
-//       status = 'Connected';
-//       isConnected = true;
-//     });
-//     ScaffoldMessenger.of(context).showSnackBar(
-//       const SnackBar(content: Text('Connected to broker')),
-//     );
-//     print('Connected');
+    client!.connectionMessage = MqttConnectMessage()
+        .authenticateAs(username, password)
+        .withWillTopic('willtopic')
+        .withWillMessage('MQTT client disconnected')
+        .startClean()
+        .withWillQos(MqttQos.atLeastOnce);
 
-//     // Subscribe to the distance data topic
-//     client!.subscribe("homeassistant/esp32/distance", MqttQos.atLeastOnce);
+    try {
+      await client!.connect();
+    } catch (e) {
+      debugPrint('[MQTT] connect exception: $e');
+      client!.disconnect();
+      setState(() => status = 'Error');
+    }
+  }
 
-//     // Listen for incoming messages.
-//     client!.updates!.listen((List<MqttReceivedMessage<MqttMessage>> event) {
-//       final recMess = event[0].payload as MqttPublishMessage;
-//       final pt =
-//           MqttPublishPayload.bytesToStringAsString(recMess.payload.message);
-//       print('Received message: $pt from topic: ${event[0].topic}');
-//       setState(() {
-//         _distanceValue = pt;
-//       });
-//     });
-//   }
+  void _onConnected() {
+    setState(() {
+      status = 'Connected';
+      isConnected = true;
+    });
+    const topic = 'homeassistant/esp32/location';
+    client!.subscribe(topic, MqttQos.atLeastOnce);
 
-//   // Called when the client disconnects.
-//   void onDisconnected() {
-//     setState(() {
-//       status = 'Disconnected';
-//       isConnected = false;
-//     });
-//     ScaffoldMessenger.of(context).showSnackBar(
-//       const SnackBar(content: Text('Disconnected from broker')),
-//     );
-//     print('Disconnected');
-//   }
+    client!.updates!.listen((events) {
+      final rec = events.first.payload as MqttPublishMessage;
+      final json = MqttPublishPayload.bytesToStringAsString(rec.payload.message);
+      debugPrint('[MQTT] payload: $json');
 
-//   // Called when a topic is successfully subscribed.
-//   void onSubscribed(String topic) {
-//     print('Subscribed to topic: $topic');
-//   }
+      uwbPayload$.add(json);
+      setState(() => _lastJson = json);
+    });
+  }
 
-//   // Called if subscription fails.
-//   void onSubscribeFail(String topic) {
-//     print('Failed to subscribe to topic: $topic');
-//   }
+  void _onDisconnected() {
+    setState(() {
+      status = 'Disconnected';
+      isConnected = false;
+    });
+  }
 
-//   // Called when unsubscribing from a topic.
-//   void onUnsubscribed(String? topic) {
-//     print('Unsubscribed from topic: $topic');
-//   }
+  void _onSubscribed(String topic) {
+    debugPrint('[MQTT] subscribed: $topic');
+  }
 
-//   // Pong callback
-//   void pong() {
-//     print('Ping response client callback invoked');
-//   }
+  void _onSubscribeFail(String topic) {
+    debugPrint('[MQTT] subscribe failed: $topic');
+  }
 
-//   @override
-//   void dispose() {
-//     client?.disconnect();
-//     super.dispose();
-//   }
+  void _onPong() {
+    debugPrint('[MQTT] ping response');
+  }
 
-//   // Build connection status indicator (green if connected, red otherwise)
-//   Widget _buildConnectionIndicator() {
-//     return Row(
-//       mainAxisAlignment: MainAxisAlignment.center,
-//       children: [
-//         const Text(
-//           'Status: ',
-//           style: TextStyle(fontSize: 24),
-//         ),
-//         Text(
-//           status,
-//           style: const TextStyle(fontSize: 24),
-//         ),
-//         const SizedBox(width: 10),
-//         Icon(
-//           Icons.circle,
-//           color: isConnected ? Colors.green : Colors.red,
-//           size: 24,
-//         ),
-//       ],
-//     );
-//   }
+  @override
+  void dispose() {
+    client?.disconnect();
+    uwbPayload$.close();
+    super.dispose();
+  }
 
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       appBar: AppBar(
-//         title: const Text('Distance Data Viewer'),
-//         backgroundColor: Colors.blue,
-//       ),
-//       body: SingleChildScrollView(
-//         child: Center(
-//           child: Padding(
-//             padding: const EdgeInsets.all(12.0),
-//             child: Column(
-//               mainAxisAlignment: MainAxisAlignment.center,
-//               children: <Widget>[
-//                 _buildConnectionIndicator(),
-//                 const SizedBox(height: 20),
-//                 const Text(
-//                   'Distance Data:',
-//                   style: TextStyle(fontSize: 20),
-//                 ),
-//                 const SizedBox(height: 10),
-//                 Text(
-//                   _distanceValue,
-//                   style: const TextStyle(
-//                       fontSize: 32, fontWeight: FontWeight.bold),
-//                 ),
-//                 const SizedBox(height: 20),
-//                 ElevatedButton(
-//                   onPressed: () async {
-//                     if (status == 'Disconnected') {
-//                       connectToBroker(); // Attempt to reconnect if disconnected
-//                     }
-//                   },
-//                   child: const Text('Reconnect'),
-//                 ),
-//               ],
-//             ),
-//           ),
-//         ),
-//       ),
-//     );
-//   }
-// }
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(title: const Text('MQTT Debug')),
+        body: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Status: $status', style: const TextStyle(fontSize: 18)),
+              const SizedBox(height: 12),
+              const Text('Last payload:'),
+              Text(_lastJson, style: const TextStyle(fontFamily: 'monospace')),
+            ],
+          ),
+        ),
+      );
+}
