@@ -6,7 +6,7 @@ import 'settings.dart';
 import '../../log_view/view_logs.dart';
 import '../../log_view/view_alerts.dart';
 import '../../reports/reports.dart';
-import 'location/live_location_page.dart';
+import 'location/live_location_map.dart';
 
 import 'main.dart';
 
