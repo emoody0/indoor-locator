@@ -238,6 +238,16 @@ void _onSubscribed(String topic) => debugPrint('[MQTT] subscribed: $topic');
 
   @override
   Widget build(BuildContext context) {
+    final double minX = rooms.isNotEmpty
+    ? rooms.map((r) => r.position.dx).reduce(min)
+    : 0;
+    final double minY = rooms.isNotEmpty
+        ? rooms.map((r) => r.position.dy).reduce(min)
+        : 0;
+    final Offset mapOffset = Offset(20 - minX * _scale, 20 - minY * _scale);
+
+    debugPrint('[LiveLocation] Map offset: $mapOffset');
+
     return Scaffold(
       appBar: AppBar(title: const Text('Live Location Map')),
       body: Column(
@@ -270,25 +280,25 @@ void _onSubscribed(String topic) => debugPrint('[MQTT] subscribed: $topic');
                     painter: GridPainter(),
                   ),
                   for (final room in rooms)
-                    Positioned(
-                      left: room.position.dx *  _scale,
-                      top: room.position.dy *  _scale,
-                      child: Container(
-                        width: room.width *  _scale,
-                        height: room.height *  _scale,
-                        decoration: BoxDecoration(
-                          color: Colors.blueAccent.withOpacity(0.4),
-                          border: Border.all(color: Colors.black, width: 2),
-                        ),
-                        child: Center(
-                          child: Text(
-                            '${room.name}\n${room.width}x${room.height}',
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(color: Colors.white),
-                          ),
-                        ),
+                Positioned(
+                  left: room.position.dx * _scale + mapOffset.dx,
+                  top: room.position.dy * _scale + mapOffset.dy,
+                  child: Container(
+                    width: room.width * _scale,
+                    height: room.height * _scale,
+                    decoration: BoxDecoration(
+                      color: Colors.blueAccent.withOpacity(0.4),
+                      border: Border.all(color: Colors.black, width: 2),
+                    ),
+                    child: Center(
+                      child: Text(
+                        '${room.name}\n${room.width}x${room.height}',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.white),
                       ),
                     ),
+                  ),
+                ),
                   if (lastKnownPosition != null)
                     Positioned(
                       left: lastKnownPosition!.dx *  _scale,
