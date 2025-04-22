@@ -1,3 +1,6 @@
+// ──────────────────────────────────────────────────────────────
+//  live_location_page.dart  (presentation layer)
+// ──────────────────────────────────────────────────────────────
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -30,9 +33,6 @@ class _LiveLocationView extends StatelessWidget {
   Widget build(BuildContext context) {
     final logic = context.watch<LiveLocationLogic>();
     final mapOffset = _calcOffset(logic.rooms, _scale);
-    debugPrint('>> tag @ ${logic.tagPosition}, mapOffset = $mapOffset');
-    debugPrint('>> total rooms loaded: ${logic.rooms.length}');
-
 
     return Scaffold(
       appBar: AppBar(title: const Text('Live Location Map')),
@@ -40,11 +40,11 @@ class _LiveLocationView extends StatelessWidget {
         children: [
           _houseDropdown(logic),
           Text(
-            logic.tagPosition == null
-                ? 'Waiting for UWB data…'
-                : 'Last fix: ${DateTime.now().toLocal().toIso8601String().substring(11, 19)}',
-            style: const TextStyle(fontSize: 12, color: Colors.black54),
-          ),
+              logic.tagPosition == null
+                  ? 'Waiting for UWB data…'
+                  : 'Last fix: ${DateTime.now().toLocal().toIso8601String().substring(11,19)}',
+              style: const TextStyle(fontSize: 12, color: Colors.black54),
+            ),
           Expanded(
             child: InteractiveViewer(
               maxScale: 3,
@@ -57,26 +57,9 @@ class _LiveLocationView extends StatelessWidget {
                     Positioned(
                       left: logic.tagPosition!.dx * _scale + mapOffset.dx,
                       top: logic.tagPosition!.dy * _scale + mapOffset.dy,
-                      child: Container(
-                        width: 20,
-                        height: 20,
-                        decoration: BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.black, width: 2),
-                        ),
-                      ),
+                      child: const Icon(Icons.person_pin_circle,
+                          size: 30, color: Colors.green),
                     ),
-                    Positioned(
-                      left: mapOffset.dx,
-                      top: mapOffset.dy,
-                      child: Container(
-                        width: 10,
-                        height: 10,
-                        color: Colors.yellow,
-                      ),
-                    ),
-
                 ],
               ),
             ),
@@ -104,18 +87,10 @@ class _LiveLocationView extends StatelessWidget {
 
   static Offset _calcOffset(List<Room> rooms, double scale) {
     if (rooms.isEmpty) return const Offset(20, 20);
-
-    final allX = rooms.map((r) => r.position.dx).toList();
-    final allY = rooms.map((r) => r.position.dy).toList();
-
-    final minX = allX.reduce((a, b) => a < b ? a : b);
-    final minY = allY.reduce((a, b) => a < b ? a : b);
-
-    // Anchor map around top-left room and add padding
-    return Offset(40 - minX * scale, 40 - minY * scale);
+    final minX = rooms.map((r) => r.position.dx).reduce((a, b) => a < b ? a : b);
+    final minY = rooms.map((r) => r.position.dy).reduce((a, b) => a < b ? a : b);
+    return Offset(20 - minX * scale, 20 - minY * scale);
   }
-
-
 
   Iterable<Widget> _roomWidgets(Room room, Offset mapOffset) {
     final roomRect = Positioned(
@@ -126,6 +101,7 @@ class _LiveLocationView extends StatelessWidget {
         height: room.height * _scale,
         decoration: BoxDecoration(
           color: Colors.blueAccent.withOpacity(0.4),
+          border: Border.all(color: Colors.black, width: 2),
         ),
         child: Center(
           child: Text(room.name, style: const TextStyle(color: Colors.white)),
