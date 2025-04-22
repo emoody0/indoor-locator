@@ -4,6 +4,8 @@ import 'configure_alert_windows.dart'; // Import the ConfigureAlertWindowsPage f
 import '../database_helper.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+import '../theme_color_notifier.dart'; //
 
 class DefaultTimeSettingsPage extends StatefulWidget {
   final bool isAdmin; // Parameter to determine if the user is an admin
@@ -206,7 +208,7 @@ class _DefaultTimeSettingsPageState extends State<DefaultTimeSettingsPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.isAdmin ? 'Configure Default Time Windows' : 'Configure Time Windows'),
-        backgroundColor: AppColors.colorScheme.primary,
+        backgroundColor: Provider.of<ThemeColorNotifier>(context).primaryColor,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {

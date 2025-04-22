@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../config.dart';
 import '../database_helper.dart';
+import 'package:provider/provider.dart';
+import '../theme_color_notifier.dart'; //
 
 class DailyReportsPage extends StatefulWidget {
   final bool isAdmin;
@@ -12,72 +14,116 @@ class DailyReportsPage extends StatefulWidget {
 }
 
 class _DailyReportsPageState extends State<DailyReportsPage> {
-  String? selectedDate; // Selected date for the report
-  String? selectedUser; // Selected user (Admin-only)
-  
-  // Placeholder for dynamic data fetched from a database
-  Map<String, dynamic> reportData = {
-    'mostActiveTime': null,
-    'leastActiveTime': null,
-    'mostTimeSpent': null,
-    'areasExplored': null,
-    'activityComparison': null,
-    'alertsToday': null,
-  };
-
-  // Example data
-  final List<String> dates = ['Today', 'Yesterday', '01/20/2025', '01/19/2025'];
+  String? selectedUser;
+  String? selectedDate;
+  Map<String, dynamic> reportData = {};
   List<Map<String, dynamic>> users = [];
-
-  void fetchReportData() {
-    // Simulate fetching data from the database
-    setState(() {
-      reportData = {
-        'mostActiveTime': '4:00pm - 8:00pm (no alerts)',
-        'leastActiveTime': '8:00am - 12:00pm (2 alerts)',
-        'mostTimeSpent': 'Living Room, Couch',
-        'areasExplored': ['Bedroom', 'Living Room', 'Bathroom', 'Kitchen'],
-        'activityComparison': 'You were more active today, good job!',
-        'alertsToday': 5,
-      };
-    });
-  }
+  List<String> reportDates = [];
 
   @override
   void initState() {
     super.initState();
-    fetchReportData(); // Fetch initial report data (e.g., "Today" for the logged-in user)
     fetchUsers();
+    fetchReportDates();
+    fetchReportData();
   }
 
-  
+  Future<void> fetchReportData() async {
+    final dbHelper = DatabaseHelper();
+    final db = await dbHelper.database;
+    final int userId = widget.isAdmin ? await getSelectedUserId() : await getCurrentUserId();
 
-  void fetchUsers() async {
-    final db = DatabaseHelper();
-    final userList = await db.getUsers();
+    final List<Map<String, dynamic>> results = await db.query(
+      'daily_reports',
+      where: 'user_id = ? AND date = ?',
+      whereArgs: [userId, selectedDate ?? DateTime.now().toIso8601String().split('T')[0]],
+      orderBy: 'id DESC',
+      limit: 1,
+    );
+
     setState(() {
-      users = userList;
+      reportData = results.isNotEmpty ? results.first : {
+        'mostActiveTime': 'No data available',
+        'leastActiveTime': 'No data available',
+        'mostTimeSpent': 'No data available',
+        'areasExplored': 'No data available',
+        'activityComparison': 'No data available',
+        'alertsToday': 'No data available',
+      };
     });
   }
 
+  Future<int> getCurrentUserId() async {
+    final dbHelper = DatabaseHelper();
+    final db = await dbHelper.database;
+    final userList = await db.query('users');
+    return userList.isNotEmpty ? userList.first['id'] as int : -1;
+  }
+
+  Future<int> getSelectedUserId() async {
+    if (selectedUser == null) return await getCurrentUserId();
+    final user = users.firstWhere((user) => user['name'] == selectedUser, orElse: () => {'id': -1});
+    return user['id'] as int? ?? -1;
+  }
+
+  Future<void> fetchUsers() async {
+    if (!widget.isAdmin) return;
+    final dbHelper = DatabaseHelper();
+    final db = await dbHelper.database;
+    final userList = await db.query('users');
+    setState(() {
+      users = userList;
+      selectedUser = users.isNotEmpty ? users.first['name'] as String : null;
+    });
+  }
+
+  Future<void> fetchReportDates() async {
+    final dbHelper = DatabaseHelper();
+    final db = await dbHelper.database;
+    final List<Map<String, dynamic>> results = await db.rawQuery(
+      'SELECT DISTINCT date FROM daily_reports ORDER BY date DESC'
+    );
+    setState(() {
+      reportDates = results.map((row) => row['date'] as String).toList();
+      selectedDate = reportDates.isNotEmpty ? reportDates.first : null;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.isAdmin ? 'Admin Daily Reports' : 'Resident Daily Reports'),
-        backgroundColor: AppColors.primaryColor,
+        backgroundColor: Provider.of<ThemeColorNotifier>(context).primaryColor,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Dropdown to select a date
+            if (widget.isAdmin) ...[
+              DropdownButtonFormField<String>(
+                value: selectedUser,
+                hint: const Text('Select a user'),
+                items: users.map((user) {
+                  return DropdownMenuItem<String>(
+                    value: user['name'] as String,
+                    child: Text(user['name'] as String),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    selectedUser = value;
+                  });
+                  fetchReportData();
+                },
+              ),
+              const SizedBox(height: 16),
+            ],
             DropdownButtonFormField<String>(
               value: selectedDate,
               hint: const Text('Select a date'),
-              items: dates.map((date) {
+              items: reportDates.map((date) {
                 return DropdownMenuItem<String>(
                   value: date,
                   child: Text(date),
@@ -86,108 +132,22 @@ class _DailyReportsPageState extends State<DailyReportsPage> {
               onChanged: (value) {
                 setState(() {
                   selectedDate = value;
-                  fetchReportData(); // Simulate fetching data for the selected date
                 });
+                fetchReportData();
               },
             ),
             const SizedBox(height: 16),
-
-            // Admin-only dropdown to select a user
-            if (widget.isAdmin) ...[
-              DropdownButtonFormField<String>(
-                value: selectedUser,
-                hint: const Text('Select a user'),
-                items: users.map((user) {
-                  return DropdownMenuItem<String>(
-                    value: user['name'],
-                    child: Text(user['name']),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    selectedUser = value;
-                    fetchReportData(); // Update data for the selected user
-                  });
-                },
-              ),
-              const SizedBox(height: 16),
-            ],
-
-            // Display report data
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Daily Report for ${selectedUser ?? 'you'} (${selectedDate ?? 'Today'}):',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    Text(
-                      'Most active time period: ${reportData['mostActiveTime'] ?? 'Loading...'}',
-                      style: const TextStyle(fontSize: 16),
-                    ),
-                    const SizedBox(height: 8),
-
-                    Text(
-                      'Least active time period: ${reportData['leastActiveTime'] ?? 'Loading...'}',
-                      style: const TextStyle(fontSize: 16),
-                    ),
-                    const SizedBox(height: 8),
-
-                    Text(
-                      'Most time spent: ${reportData['mostTimeSpent'] ?? 'Loading...'}',
-                      style: const TextStyle(fontSize: 16),
-                    ),
-                    const SizedBox(height: 8),
-
-                    Text(
-                      'Areas explored today: ${(reportData['areasExplored'] as List<String>?)?.join(', ') ?? 'Loading...'}',
-                      style: const TextStyle(fontSize: 16),
-                    ),
-                    const SizedBox(height: 8),
-
-                    Text(
-                      '${reportData['activityComparison'] ?? 'Loading...'}',
-                      style: const TextStyle(fontSize: 16),
-                    ),
-                    const SizedBox(height: 8),
-
-                    Text(
-                      'You received ${reportData['alertsToday'] ?? 'Loading...'} total alerts today.',
-                      style: const TextStyle(fontSize: 16),
-                    ),
-                    const SizedBox(height: 32),
-
-                    // Placeholder for graphs
-                    Center(
-                      child: Column(
-                        children: [
-                          Container(
-                            height: 200,
-                            width: double.infinity,
-                            color: Colors.grey[300], // Placeholder for alert graph
-                            child: const Center(child: Text('Alert Graph Placeholder')),
-                          ),
-                          const SizedBox(height: 16),
-                          Container(
-                            height: 200,
-                            width: double.infinity,
-                            color: Colors.grey[300], // Placeholder for heatmap
-                            child: const Center(child: Text('Heatmap Placeholder')),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            Text('Most active time period: ${reportData['mostActiveTime']}'),
+            const SizedBox(height: 8),
+            Text('Least active time period: ${reportData['leastActiveTime']}'),
+            const SizedBox(height: 8),
+            Text('Most time spent: ${reportData['mostTimeSpent']}'),
+            const SizedBox(height: 8),
+            Text('Areas explored today: ${reportData['areasExplored']}'),
+            const SizedBox(height: 8),
+            Text('${reportData['activityComparison']}'),
+            const SizedBox(height: 8),
+            Text('You received ${reportData['alertsToday']} total alerts today.'),
           ],
         ),
       ),

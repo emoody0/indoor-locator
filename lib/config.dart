@@ -4,12 +4,13 @@ import 'package:flutter/material.dart';
 
 // Color scheme configuration
 class AppColors {
-  static const Color primaryColor = Colors.blue;
+  static Color primaryColor = Colors.blue; // Default banner color
+
   static const ColorScheme colorScheme = ColorScheme(
-    primary: primaryColor,
-    primaryContainer: Colors.blueAccent, // Updated from primaryVariant
+    primary: Colors.blue,
+    primaryContainer: Colors.blueAccent,
     secondary: Colors.green,
-    secondaryContainer: Colors.greenAccent, // Updated from secondaryVariant
+    secondaryContainer: Colors.greenAccent,
     surface: Colors.white,
     error: Colors.red,
     onPrimary: Colors.white,
@@ -18,7 +19,12 @@ class AppColors {
     onError: Colors.white,
     brightness: Brightness.light,
   );
+
+  static void setPrimaryColor(Color color) {
+    primaryColor = color;
+  }
 }
+
 
 // Permission-related data
 class PermissionData {

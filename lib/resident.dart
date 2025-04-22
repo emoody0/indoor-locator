@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'config.dart';
+import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import '../time_windows/default_time_settings.dart';
 import '../log_view/view_logs.dart';
 import '../log_view/view_alerts.dart';
 import '../reports/reports.dart';
 import 'main.dart';
-
+import 'package:provider/provider.dart';
+import 'theme_color_notifier.dart'; //
 class ResidentPortal extends StatelessWidget {
   const ResidentPortal({super.key});
 
@@ -43,15 +45,15 @@ class ResidentPortal extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Resident Portal'),
-        backgroundColor: AppColors.primaryColor,
+        backgroundColor: Provider.of<ThemeColorNotifier>(context).primaryColor,
       ),
       drawer: Drawer(
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
             DrawerHeader(
-              decoration: const BoxDecoration(
-                color: AppColors.primaryColor,
+              decoration: BoxDecoration(
+                color: Provider.of<ThemeColorNotifier>(context).primaryColor,
               ),
               child: Text(
                 'Resident Menu',
@@ -79,28 +81,36 @@ class ResidentPortal extends StatelessWidget {
             ListTile(
               leading: const Icon(Icons.list),
               title: const Text('View Logs'),
-              onTap: () {
+              onTap: () async {
+                final SharedPreferences prefs = await SharedPreferences.getInstance();
+                int userId = prefs.getInt('user_id') ?? 0; // Fetch user ID
+
                 Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => ViewLogsPage(
                       key: UniqueKey(),
                       isAdmin: false,
+                      userId: userId, // Pass the user ID
                     ),
                   ),
                 );
               },
             ),
+
             ListTile(
               leading: const Icon(Icons.warning),
               title: const Text('View Alerts'),
-              onTap: () {
+              onTap: () async {
+                final SharedPreferences prefs = await SharedPreferences.getInstance();
+                int userId = prefs.getInt('user_id') ?? 0; // Fetch user ID
                 Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => ViewAlertsPage(
                       key: UniqueKey(),
                       isAdmin: false,
+                      userId: userId,
                     ),
                   ),
                 );
@@ -117,6 +127,10 @@ class ResidentPortal extends StatelessWidget {
                   ),
                 );
               },
+            ),
+            ListTile(
+              title: const Text('Change Banner Color'),
+              onTap: () => showColorPicker(context),
             ),
             ListTile(
               leading: const Icon(Icons.logout),
@@ -145,6 +159,41 @@ class ResidentPortal extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  void showColorPicker(BuildContext context) {
+    final themeNotifier = Provider.of<ThemeColorNotifier>(context, listen: false);
+    Color currentColor = themeNotifier.primaryColor;
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Pick Banner Color'),
+          content: SingleChildScrollView(
+            child: ColorPicker(
+              pickerColor: currentColor,
+              onColorChanged: (Color color) {
+                currentColor = color;
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            TextButton(
+              child: const Text('Save'),
+              onPressed: () {
+                themeNotifier.setPrimaryColor(currentColor); // ✅ triggers immediate update
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 }

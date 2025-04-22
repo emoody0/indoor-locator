@@ -4,7 +4,8 @@ import 'add_user.dart'; // Import the AddUserPage file
 import 'edit_user.dart';
 import 'view_user.dart';
 import '../database_helper.dart'; // Import DatabaseHelper for user data handling
-
+import 'package:provider/provider.dart';
+import '../theme_color_notifier.dart';
 class ManageUsersPage extends StatefulWidget {
   const ManageUsersPage({super.key});
 
@@ -50,7 +51,7 @@ class _ManageUsersPageState extends State<ManageUsersPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Manage Users'),
-        backgroundColor: AppColors.colorScheme.primary, // Use color from config
+        backgroundColor:  Provider.of<ThemeColorNotifier>(context).primaryColor, // Use color from config
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {

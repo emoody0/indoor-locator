@@ -7,6 +7,8 @@ import '../../log_view/view_alerts.dart';
 import '../../server/mqtt.dart';
 import '../../reports/reports.dart';
 import 'main.dart';
+import 'package:provider/provider.dart';
+import 'theme_color_notifier.dart'; //
 
 class AdminPortal extends StatelessWidget {
   final VoidCallback onLogout;
@@ -46,15 +48,15 @@ class AdminPortal extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Admin Portal'),
-        backgroundColor: AppColors.primaryColor,
+        backgroundColor: Provider.of<ThemeColorNotifier>(context).primaryColor,
       ),
       drawer: Drawer(
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
             DrawerHeader(
-              decoration: const BoxDecoration(
-                color: AppColors.primaryColor,
+              decoration: BoxDecoration(
+                color: Provider.of<ThemeColorNotifier>(context).primaryColor,
               ),
               child: Text(
                 'Admin Menu',
@@ -67,28 +69,36 @@ class AdminPortal extends StatelessWidget {
             ListTile(
               leading: const Icon(Icons.article),
               title: const Text('View Logs'),
-              onTap: () {
+              onTap: () async {
+                final SharedPreferences prefs = await SharedPreferences.getInstance();
+                int adminId = prefs.getInt('user_id') ?? 0; // Fetch admin ID
+
                 Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => ViewLogsPage(
                       key: UniqueKey(),
                       isAdmin: true,
+                      userId: adminId, // Pass admin ID
                     ),
                   ),
                 );
               },
             ),
+
             ListTile(
               leading: const Icon(Icons.notifications),
               title: const Text('View Alerts'),
-              onTap: () {
+              onTap: () async {
+                final SharedPreferences prefs = await SharedPreferences.getInstance();
+                int adminId = prefs.getInt('user_id') ?? 0;
                 Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => ViewAlertsPage(
                       key: UniqueKey(),
                       isAdmin: true,
+                      userId: adminId,
                     ),
                   ),
                 );

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../config.dart';
+import 'package:provider/provider.dart';
+import '../theme_color_notifier.dart'; //
 
 class ConfigureAlertWindowsPage extends StatefulWidget {
   const ConfigureAlertWindowsPage({super.key});
@@ -39,7 +41,7 @@ class _ConfigureAlertWindowsPageState extends State<ConfigureAlertWindowsPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Configure Alert Windows'),
-        backgroundColor: AppColors.colorScheme.primary,
+        backgroundColor: Provider.of<ThemeColorNotifier>(context).primaryColor,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {

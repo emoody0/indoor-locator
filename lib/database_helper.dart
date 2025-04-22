@@ -4,11 +4,10 @@ import 'houses/room.dart';
 import 'dart:convert';
 import 'package:intl/intl.dart';
 
-
 class DatabaseHelper {
   static final DatabaseHelper _instance = DatabaseHelper._internal();
   factory DatabaseHelper() => _instance;
-  static const int _databaseVersion = 5; // Incremented to include users table
+  static const int _databaseVersion = 9; // Incremented to include new tables
 
   static Database? _database;
 
@@ -24,7 +23,7 @@ class DatabaseHelper {
     String path = join(await getDatabasesPath(), 'house_setup.db');
     return await openDatabase(
       path,
-      version: 4, // Update the version number if you have schema changes
+      version: _databaseVersion, // Updated version number
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE rooms (
@@ -38,7 +37,7 @@ class DatabaseHelper {
             name TEXT,
             houseName TEXT,
             groupId INTEGER,
-            sensors TEXT DEFAULT "[]" -- Ensure sensors column exists from the start
+            sensors TEXT DEFAULT "[]"
           )
         ''');
 
@@ -64,33 +63,199 @@ class DatabaseHelper {
             end_window INTEGER DEFAULT 72000000,
             is_default INTEGER DEFAULT 1
           )
-        '''); 
-    },
+        ''');
 
+        await db.execute('''
+          CREATE TABLE sensor_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT,  -- Changed from INTEGER to TEXT
+            rssi INTEGER,
+            aoa_tof TEXT,
+            room_origin TEXT,
+            date TEXT DEFAULT CURRENT_DATE  -- Added date column
+          )
+        ''');
+
+        await db.execute('''
+          CREATE TABLE log_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            room_origin TEXT,  -- Added room category
+            house TEXT,  -- Added house category
+            start_window INTEGER,
+            end_window INTEGER,
+            annotation TEXT,
+            date TEXT
+          )
+        ''');
+
+        await db.execute('''
+          CREATE TABLE alert_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            room_origin TEXT,  -- Added room category
+            house TEXT,  -- Added house category
+            alert_type TEXT,
+            timestamp TEXT,
+            annotation TEXT
+          )
+        ''');
+        await db.execute('''
+          CREATE TABLE daily_reports (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            alert_count INTEGER,
+            room_frequency TEXT,
+            date TEXT DEFAULT CURRENT_DATE  -- Added date column
+          )
+        ''');
+
+        await db.execute('''
+          CREATE TABLE weekly_reports (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            report_data TEXT,
+            date TEXT DEFAULT CURRENT_DATE  -- Added date column
+          )
+        ''');
+
+        await db.execute('''
+          CREATE TABLE monthly_reports (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            report_data TEXT,
+            date TEXT DEFAULT CURRENT_DATE  -- Added date column
+          )
+        ''');
+      },
       onUpgrade: (db, oldVersion, newVersion) async {
-        if (oldVersion < 2) {
-            await db.execute('ALTER TABLE rooms ADD COLUMN houseName TEXT');
-        }
-        if (oldVersion < 4) {
-            await db.execute('ALTER TABLE rooms ADD COLUMN sensors TEXT DEFAULT "[]"');
-            await db.execute('''
-              CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT,
-                email TEXT,
-                userType TEXT,
-                house TEXT,
-                organization TEXT
-              )
-            ''');
-        }
-        if (oldVersion < 5) {
-          await db.execute("ALTER TABLE users ADD COLUMN start_window INTEGER DEFAULT 28800000");
-          await db.execute("ALTER TABLE users ADD COLUMN end_window INTEGER DEFAULT 72000000");
-          await db.execute("ALTER TABLE users ADD COLUMN is_default INTEGER DEFAULT 1");
-        }
-    },
+        if (oldVersion < 6) {
+          // Check if 'datetime' column exists before adding
+          List<Map<String, dynamic>> columns = await db.rawQuery("PRAGMA table_info(sensor_logs)");
+          bool columnExists = columns.any((column) => column['name'] == 'datetime');
 
+          if (!columnExists) {
+            await db.execute('ALTER TABLE sensor_logs ADD COLUMN datetime TEXT DEFAULT CURRENT_TIMESTAMP');
+          }
+          
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS log_logs (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              user_id INTEGER,
+              room_origin TEXT,
+              start_window INTEGER,
+              end_window INTEGER,
+              annotation TEXT DEFAULT ""
+            )
+          ''');
+
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS alert_logs (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              user_id INTEGER,
+              notification_text TEXT,
+              annotation TEXT DEFAULT ""
+              timestamp TEXT
+            )
+          ''');
+
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS daily_reports (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              user_id INTEGER,
+              alert_count INTEGER,
+              room_frequency TEXT
+            )
+          ''');
+
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS weekly_reports (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              user_id INTEGER,
+              report_data TEXT
+            )
+          ''');
+
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS monthly_reports (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              user_id INTEGER,
+              report_data TEXT
+            )
+          ''');
+        }
+        if (oldVersion < 7) {  // Assuming the new database version is 7
+          // Change `timestamp` in `sensor_logs` from INTEGER to TEXT
+          await db.execute('''
+            ALTER TABLE sensor_logs RENAME TO sensor_logs_old;
+          ''');
+          await db.execute('''
+            CREATE TABLE sensor_logs (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              timestamp TEXT,  -- Changed from INTEGER to TEXT
+              rssi INTEGER,
+              aoa_tof TEXT,
+              room_origin TEXT,
+              date TEXT DEFAULT CURRENT_DATE  -- Added date column
+            )
+          ''');
+          await db.execute('''
+            INSERT INTO sensor_logs (id, timestamp, rssi, aoa_tof, room_origin)
+            SELECT id, CAST(timestamp AS TEXT), rssi, aoa_tof, room_origin FROM sensor_logs_old;
+          ''');
+          await db.execute('DROP TABLE sensor_logs_old;');
+
+          // Add `date` column if it doesn't exist
+          List<String> tables = ['log_logs', 'alert_logs', 'daily_reports', 'weekly_reports', 'monthly_reports'];
+
+          for (String table in tables) {
+            List<Map<String, dynamic>> columns = await db.rawQuery("PRAGMA table_info($table)");
+            bool columnExists = columns.any((column) => column['name'] == 'date');
+
+            if (!columnExists) {
+              await db.execute('ALTER TABLE $table ADD COLUMN date TEXT DEFAULT CURRENT_DATE');
+            }
+          }
+        }
+        if (oldVersion < 8) {
+          print("DEBUG: Running database migration to version 8...");
+          
+          // Define tables that need `house` and `room_origin`
+          List<String> tablesToModify = ['log_logs', 'alert_logs'];
+
+          for (String table in tablesToModify) {
+            // Check if `house` column exists
+            List<Map<String, dynamic>> columns = await db.rawQuery("PRAGMA table_info($table)");
+            bool houseExists = columns.any((column) => column['name'] == 'house');
+            bool roomExists = columns.any((column) => column['name'] == 'room_origin');
+
+            if (!houseExists) {
+              await db.execute("ALTER TABLE $table ADD COLUMN house TEXT;");
+              print("DEBUG: Added 'house' column to $table.");
+            }
+            
+            if (!roomExists) {
+              await db.execute("ALTER TABLE $table ADD COLUMN room_origin TEXT;");
+              print("DEBUG: Added 'room_origin' column to $table.");
+            }
+          }
+
+          print("DEBUG: Database migration to version 8 complete.");
+        }
+        if (oldVersion < 9) {  // Assuming we are moving to version 9
+          print("DEBUG: Running database migration to version 9...");
+          
+          List<Map<String, dynamic>> columns = await db.rawQuery("PRAGMA table_info(alert_logs)");
+          bool timestampExists = columns.any((column) => column['name'] == 'timestamp');
+
+          if (!timestampExists) {
+            await db.execute("ALTER TABLE alert_logs ADD COLUMN timestamp TEXT;");
+            print("DEBUG: Added 'timestamp' column to alert_logs.");
+          }
+
+          print("DEBUG: Database migration to version 9 complete.");
+        }
+      }
     );
   }
 
@@ -480,5 +645,92 @@ class DatabaseHelper {
     }
   }
 
+  // New functions for log_logs
+  Future<List<Map<String, dynamic>>> getLogs(int userId, bool isAdmin) async {
+    final db = await database;
+
+    List<Map<String, dynamic>> logs = await db.query(
+      'log_logs',
+      where: isAdmin ? null : 'user_id = ?',
+      whereArgs: isAdmin ? null : [userId],
+      orderBy: 'date DESC, start_window ASC',
+    );
+
+    print("DEBUG: Returning logs after filtering: $logs");
+    return logs;
+  }
+
+
+
+  Future<void> addAnnotation(int logId, String annotation, int userId) async {
+    final db = await database;
+    await db.update(
+      'log_logs',
+      {'annotation': annotation},
+      where: 'id = ? AND user_id = ?',
+      whereArgs: [logId, userId],
+    );
+  }
+
+  Future<Map<String, dynamic>?> getUserByEmail(String email) async {
+    final db = await database;
+    final List<Map<String, dynamic>> result = await db.query(
+      'users',
+      where: 'email = ?',
+      whereArgs: [email],
+    );
+    return result.isNotEmpty ? result.first : null;
+  }
+
+  // New functions for alert_logs
+  Future<List<Map<String, dynamic>>> getAlerts(int userId, bool isAdmin) async {
+    final db = await database;
+
+    // Fetch all alerts first (before filtering)
+    List<Map<String, dynamic>> rawAlerts = await db.query('alert_logs');
+    print("DEBUG: Raw alerts from DB: $rawAlerts");
+
+    List<Map<String, dynamic>> alerts = await db.query(
+      'alert_logs',
+      where: isAdmin ? null : 'user_id = ?',
+      whereArgs: isAdmin ? null : [userId],
+      orderBy: 'timestamp DESC',
+    );
+
+    print("DEBUG: Returning alerts after filtering: $alerts");
+    return alerts;
+  }
+
+  Future<void> addAlertAnnotation(int alertId, String annotation, int userId) async {
+    final db = await database;
+    await db.update(
+      'alert_logs',
+      {'annotation': annotation},
+      where: 'id = ? AND user_id = ?',
+      whereArgs: [alertId, userId],
+    );
+  }
+
+  Future<void> insertSampleAlerts() async {
+    final db = await database;
+    final users = await db.query('users');
+    if (users.isEmpty) return;
+
+    final userId = users.first['id'];
+
+    await db.insert('alert_logs', {
+      'user_id': 2,
+      'room_origin': 'Room1',
+      'house': 'House 1',
+      'alert_type': 'Test Alert',
+      'timestamp': DateTime.now().toIso8601String(),
+      'annotation': '',
+    });
+
+    print("DEBUG: Sample alerts inserted.");
+  }
+
+
+  
 
 }

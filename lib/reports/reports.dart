@@ -3,6 +3,8 @@ import '../config.dart';
 import 'daily_reports.dart';
 import 'weekly_reports.dart';
 import 'monthly_reports.dart';
+import 'package:provider/provider.dart';
+import '../theme_color_notifier.dart'; //
 
 class ReportsPage extends StatelessWidget {
   final bool isAdmin;
@@ -14,7 +16,7 @@ class ReportsPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(isAdmin ? 'Admin Reports' : 'Resident Reports'),
-        backgroundColor: AppColors.primaryColor,
+        backgroundColor: Provider.of<ThemeColorNotifier>(context).primaryColor,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),

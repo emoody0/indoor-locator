@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import '../config.dart'; // Import config file
 import '../database_helper.dart'; // Import DatabaseHelper for user data handling
-
+import 'package:provider/provider.dart';
+import '../theme_color_notifier.dart';
 class EditUserPage extends StatefulWidget {
   final int id; // User ID
   final String name;
@@ -157,7 +158,7 @@ class _EditUserPageState extends State<EditUserPage> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Edit User'),
-          backgroundColor: AppColors.colorScheme.primary,
+          backgroundColor:  Provider.of<ThemeColorNotifier>(context).primaryColor,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
             onPressed: () async {

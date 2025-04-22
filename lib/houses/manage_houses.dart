@@ -4,6 +4,8 @@ import '../database_helper.dart'; // Import database helper
 import 'new_house_setup.dart'; // Import house setup page
 import 'view_house_page.dart';
 import 'room.dart';
+import 'package:provider/provider.dart';
+import '../theme_color_notifier.dart'; 
 
 class ManageHousesPage extends StatefulWidget {
   const ManageHousesPage({super.key});
@@ -28,7 +30,7 @@ class _ManageHousesPageState extends State<ManageHousesPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Manage Houses'),
-        backgroundColor: AppColors.colorScheme.primary, // Use color from config
+        backgroundColor:  Provider.of<ThemeColorNotifier>(context).primaryColor, // Use color from config
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {

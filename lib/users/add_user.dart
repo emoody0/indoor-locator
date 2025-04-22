@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import '../config.dart'; // Import config file
 import '../database_helper.dart';
-
+import 'package:provider/provider.dart';
+import '../theme_color_notifier.dart';
 class AddUserPage extends StatefulWidget {
   const AddUserPage({super.key});
 
@@ -120,7 +121,7 @@ class _AddUserPageState extends State<AddUserPage> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Add User'),
-          backgroundColor: AppColors.colorScheme.primary,
+          backgroundColor:  Provider.of<ThemeColorNotifier>(context).primaryColor,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
             onPressed: () async {

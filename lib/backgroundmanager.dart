@@ -2,6 +2,7 @@ import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'database_helper.dart';
 import 'dart:isolate';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:awesome_notifications/awesome_notifications.dart';
 
 void initializeBackgroundManager() {
   FlutterForegroundTask.startService(
@@ -20,6 +21,7 @@ class MyTaskHandler extends TaskHandler {
   @override
   Future<void> onRepeatEvent(DateTime timestamp, SendPort? sendPort) async {
     await pingDatabase();
+    await checkWeeklyAlertSummary(); // new function
   }
 
   @override
@@ -73,6 +75,81 @@ class MyTaskHandler extends TaskHandler {
   }
 
 }
+
+Future<void> checkWeeklyAlertSummary() async {
+  final now = DateTime.now();
+  
+  // Change these for testing
+  const testMode = true;
+  final targetDay = DateTime.friday;
+  final targetHour = 12;
+  final targetMinute = 0;
+
+
+  if (now.weekday != targetDay || now.hour != targetHour || now.minute != targetMinute) {
+    return;
+  }
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  final currentUserId = prefs.getInt('user_id');
+  print("[DEBUG] Current userId: $currentUserId");
+  final db = DatabaseHelper();
+
+  final List<Map<String, dynamic>> allUsers = await db.getUsers();
+  print("[DEBUG] All users: $allUsers");
+  final oneWeekAgo = now.subtract(const Duration(days: 7));
+
+  final alerts = await db.database.then((db) => db.query(
+    'alert_logs',
+    where: 'timestamp >= ?',
+    whereArgs: [oneWeekAgo.toIso8601String()],
+  ));
+
+  // Map of userId -> alertCount
+  final Map<int, int> alertCounts = {};
+
+  for (var alert in alerts) {
+    final int uid = alert['user_id'] as int;
+    alertCounts[uid] = (alertCounts[uid] ?? 0) + 1;
+  }
+
+
+  for (var user in allUsers) {
+    final uid = user['id'];
+    final count = alertCounts[uid] ?? 0;
+
+    if (uid == currentUserId && user['userType'] == 'User') {
+      String msg = count <= 3
+        ? "Good job, only $count alerts this week! You deserve some ice cream! 🍦"
+        : "Summary: You generated $count alerts this week.";
+      _sendNotification(msg);
+    }
+
+    if (user['userType'] == 'Admin' && uid == currentUserId) {
+      final rewardUsers = allUsers
+        .where((u) => u['userType'] == 'User' && (alertCounts[u['id']] ?? 0) <= 3)
+        .map((u) => u['name'])
+        .join(', ');
+      if (rewardUsers.isNotEmpty) {
+        _sendNotification("Weekly Reward Summary: $rewardUsers deserve a reward!");
+      }
+    }
+  }
+
+}
+
+void _sendNotification(String message) {
+  AwesomeNotifications().createNotification(
+    content: NotificationContent(
+      id: DateTime.now().millisecondsSinceEpoch.remainder(100000),
+      channelKey: 'weekly_alerts',
+      title: 'Weekly Summary',
+      body: message,
+      notificationLayout: NotificationLayout.Default,
+    ),
+  );
+}
+
+
 
 // Required callback function for foreground task
 @pragma('vm:entry-point')
