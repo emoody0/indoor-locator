@@ -54,41 +54,41 @@ class _LiveLocationMapPageState extends State<LiveLocationMapPage> {
   }
 
   Future<void> _connectToMQTT() async {
-    client = MqttServerClient.withPort("192.168.119.63", "flutter_client", 1883);
-    client!
-      ..logging(on: true)
-      ..keepAlivePeriod = 60
-      ..onConnected = () => debugPrint('[MQTT] connected');
-      client!.onDisconnected = _onDisconnected;
-      client!.onSubscribed = _onSubscribed;
+  client = MqttServerClient.withPort("192.168.119.63", "flutter_client", 1883);
+  client!
+    ..logging(on: true)
+    ..keepAlivePeriod = 60
+    ..onConnected = _onConnected
+    ..onDisconnected = _onDisconnected
+    ..onSubscribed = _onSubscribed;
 
+  final connMess = MqttConnectMessage()
+      .authenticateAs("flutter_client", "flutter_client!")
+      .withWillTopic("homeassistant/esp32/location")
+      .withWillMessage("UWB client disconnected")
+      .startClean()
+      .withWillQos(MqttQos.atLeastOnce);
 
-    client!.connectionMessage = MqttConnectMessage()
-        .authenticateAs("flutter_client", "flutter_client!")
-        .startClean()
-        .withWillQos(MqttQos.atLeastOnce);
+  client!.connectionMessage = connMess;
 
-    try {
-      await client!.connect();
-      client!.subscribe("homeassistant/esp32/location", MqttQos.atLeastOnce);
-      client!.updates!.listen((events) {
-        final rec = events.first.payload as MqttPublishMessage;
-        final json = MqttPublishPayload.bytesToStringAsString(rec.payload.message);
-        debugPrint('[MQTT] payload: $json');
-        uwbPayload$.add(json);
-      });
-    } catch (e) {
-      debugPrint('[MQTT] connect error: $e');
-      client!.disconnect();
-    }
+  try {
+    await client!.connect();
+    client!.subscribe("homeassistant/esp32/location", MqttQos.atLeastOnce);
+    client!.updates!.listen((List<MqttReceivedMessage<MqttMessage>> events) {
+      final rec = events.first.payload as MqttPublishMessage;
+      final json = MqttPublishPayload.bytesToStringAsString(rec.payload.message);
+      debugPrint('[MQTT] payload: $json');
+      uwbPayload$.add(json);
+    });
+  } catch (e) {
+    debugPrint('[MQTT] connect error: $e');
+    client!.disconnect();
   }
-  void _onDisconnected() {
-    debugPrint('[MQTT] disconnected');
-  }
+}
 
-  void _onSubscribed(String topic) {
-    debugPrint('[MQTT] subscribed: $topic');
-  }
+void _onConnected() => debugPrint('[MQTT] connected');
+void _onDisconnected() => debugPrint('[MQTT] disconnected');
+void _onSubscribed(String topic) => debugPrint('[MQTT] subscribed: $topic');
 
   void _subscribeToUwb() {
     _mqttSub = uwbPayload$.stream.listen((json) {
