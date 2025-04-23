@@ -18,7 +18,7 @@ class _LiveLocationMapPageState extends State<LiveLocationMapPage> {
   final List<Map<String, dynamic>> houseOptions = [];
   String? selectedHouseName;
   List<Room> rooms = [];
-  Offset? lastKnownPosition = const Offset(197.3, 219.4); // example default
+  Offset tag = const Offset(0, 0); // Placeholder for the tag position
   double scale = 10.0;
   Offset offset = Offset.zero;
 
@@ -64,9 +64,15 @@ class _LiveLocationMapPageState extends State<LiveLocationMapPage> {
     double maxY = rooms.map((room) => room.position.dy + room.height).reduce((a, b) => a > b ? a : b);
     debugPrint('[LiveLocation] Room Bounds: minX=$minX, minY=$minY, maxX=$maxX, maxY=$maxY');
     debugPrint('[LiveLocation] Map size: ${maxX - minX} x ${maxY - minY}');
+      
     setState(() {
       offset = Offset(-minX * scale + 20, -minY * scale + 20); // Center initial view
+      tag = Offset(
+      tag.dx.clamp(minX, maxX),
+      tag.dy.clamp(minY, maxY),
+      );
       debugPrint('[LiveLocation] Map offset: $offset');
+      debugPrint('[LiveLocation] Confined tag: $tag');
       });
   }
 
@@ -160,13 +166,12 @@ class _LiveLocationMapPageState extends State<LiveLocationMapPage> {
                         ),
                       ),
                     ),
-                  if (lastKnownPosition != null)
                     Positioned(
-                      left: lastKnownPosition!.dx,
-                      top: lastKnownPosition!.dy,
+                      left: tag.dx,
+                      top: tag.dy,
                       child: const Icon(Icons.person_pin_circle,
                           size: 30, color: Colors.green),
-                    ),
+              ),
                 ],
               ),
             ),
