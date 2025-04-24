@@ -1,12 +1,13 @@
 import 'dart:async';
+import 'dart:math';
+import 'dart:ui';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../houses/room.dart';
 import '../houses/sensor.dart';
 import '../server/database_service.dart';
-
-final StreamController<String> uwbPayload$ = StreamController<String>.broadcast();
+import '../server/mqtt.dart';
 
 class LiveLocationMapPage extends StatefulWidget {
   const LiveLocationMapPage({super.key});
@@ -18,10 +19,10 @@ class _LiveLocationMapPageState extends State<LiveLocationMapPage> {
   final List<Map<String, dynamic>> houseOptions = [];
   String? selectedHouseName;
   List<Room> rooms = [];
-  Offset tag = const Offset(0, 0); // Placeholder for the tag position
+  Offset tag = Offset.zero; // Placeholder for the tag position
   double scale = 10.0;
   Offset offset = Offset.zero;
-
+  StreamSubscription? _tagStream;
   Timer? _refreshTimer;
 
   @override
@@ -31,11 +32,95 @@ class _LiveLocationMapPageState extends State<LiveLocationMapPage> {
   }
 
   Future<void> _init() async {
+    await startMqttConnection();
     await _loadHouseList();
     _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       _loadRooms();
     });
+     _tagStream = uwbPayload$.stream.listen(_handleTagPayload);
   }
+
+  void _handleTagPayload(String payload) {
+  debugPrint("[LiveLocation] Raw Payload: $payload");
+
+  try {
+    final Map<String, dynamic> data = jsonDecode(payload);
+    final List<dynamic> links = data['links'];
+
+    // Define anchor positions in feet (you can convert to meters if needed)
+    final Map<String, Offset> anchors = {
+      '1786': Offset(107.6, 308.7),
+      '1789': Offset(107.6, 328.7),
+      '1783': Offset(127.6, 308.7),
+    };
+
+    // Parse and filter valid anchor-distance pairs
+    final validLinks = links.where((e) =>
+      anchors.containsKey(e['A']) &&
+      double.tryParse(e['R'].toString()) != null
+    ).toList();
+
+    if (validLinks.length < 2) {
+      debugPrint('[LiveLocation] Not enough valid anchor data');
+      return;
+    }
+
+    // If 2 anchors, use 2-point trilateration
+    if (validLinks.length == 2) {
+      final a1 = anchors[validLinks[0]['A']]!;
+      final a2 = anchors[validLinks[1]['A']]!;
+      final d1 = double.parse(validLinks[0]['R']);
+      final d2 = double.parse(validLinks[1]['R']);
+
+      final trilat = _trilaterateTwoAnchors(a1, d1, a2, d2);
+      debugPrint('[LiveLocation] Estimated tag position: $trilat');
+
+      setState(() {
+        tag = Offset(trilat.dx * scale, trilat.dy * scale);
+      });
+      return;
+    }
+
+    // If 3 or more, use weighted average
+    double sx = 0, sy = 0, sw = 0;
+    for (final e in validLinks) {
+      final anchor = anchors[e['A']]!;
+      final dist = double.parse(e['R']);
+      final weight = 1 / (dist == 0 ? 1e-6 : dist);  // Avoid divide by zero
+      sx += anchor.dx * weight;
+      sy += anchor.dy * weight;
+      sw += weight;
+    }
+
+    final weighted = Offset(sx / sw, sy / sw);
+    debugPrint('[LiveLocation] Weighted average tag position: $weighted');
+
+    setState(() {
+      tag = Offset(weighted.dx * scale, weighted.dy * scale);
+    });
+
+  } catch (e) {
+    debugPrint('[LiveLocation] Error parsing payload: $e');
+  }
+}
+
+Offset _trilaterateTwoAnchors(Offset a, double da, Offset b, double db) {
+  final dx = b.dx - a.dx;
+  final dy = b.dy - a.dy;
+  final dist = sqrt(dx * dx + dy * dy);
+
+  final cosA = (db * db + dist * dist - da * da) / (2 * db * dist);
+  if (cosA.abs() > 1.0) return a;
+
+  final px = db * cosA;
+  final py = db * sqrt(1 - cosA * cosA);
+  final angle = atan2(dy, dx);
+  final rx = px * cos(angle) - py * sin(angle);
+  final ry = px * sin(angle) + py * cos(angle);
+
+  return Offset(a.dx + rx, a.dy + ry);
+}
+
 
   Future<void> _loadHouseList() async {
     final raw = await DatabaseService.fetchHouses();
@@ -109,6 +194,7 @@ class _LiveLocationMapPageState extends State<LiveLocationMapPage> {
   @override
   void dispose() {
     _refreshTimer?.cancel();
+    _tagStream?.cancel();
     super.dispose();
   }
 
@@ -131,7 +217,7 @@ class _LiveLocationMapPageState extends State<LiveLocationMapPage> {
                       ))
                   .toList(),
               onChanged: (v) async {
-                selectedHouseName = v;
+               setState(() => selectedHouseName = v);
                 await _loadRooms();
               },
             ),
