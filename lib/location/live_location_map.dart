@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:math';
-import 'dart:ui';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
@@ -24,6 +23,7 @@ class _LiveLocationMapPageState extends State<LiveLocationMapPage> {
   Offset offset = Offset.zero;
   StreamSubscription? _tagStream;
   Timer? _refreshTimer;
+  Offset? _lastValidTagPosition;
 
   @override
   void initState() {
@@ -41,86 +41,55 @@ class _LiveLocationMapPageState extends State<LiveLocationMapPage> {
   }
 
   void _handleTagPayload(String payload) {
-  debugPrint("[LiveLocation] Raw Payload: $payload");
-
   try {
     final Map<String, dynamic> data = jsonDecode(payload);
-    final List<dynamic> links = data['links'];
+    final links = List<dynamic>.from(data['links'] ?? []);
 
-    // Define anchor positions in feet (you can convert to meters if needed)
     final Map<String, Offset> anchors = {
       '1786': Offset(107.6, 308.7),
       '1789': Offset(107.6, 328.7),
       '1783': Offset(127.6, 308.7),
     };
 
-    // Parse and filter valid anchor-distance pairs
-    final validLinks = links.where((e) =>
-      anchors.containsKey(e['A']) &&
-      double.tryParse(e['R'].toString()) != null
-    ).toList();
+    final validLinks = links.where((e) {
+      final anchorId = e['A'].toString();
+      final distance = double.tryParse(e['R'].toString());
+      return anchors.containsKey(anchorId) && distance != null && distance > 0;
+    }).toList();
 
-    if (validLinks.length < 2) {
-      debugPrint('[LiveLocation] Not enough valid anchor data');
-      return;
+    if (validLinks.isEmpty) return;
+
+    // Always use weighted average of all valid anchors
+    double totalWeight = 0;
+    Offset weightedSum = Offset.zero;
+    
+    for (final link in validLinks) {
+      final anchor = anchors[link['A']]!;
+      final distance = double.parse(link['R'].toString());
+      final weight = 1 / (distance + 0.1);  // Add small epsilon to avoid div/0
+      
+      weightedSum += Offset(
+        anchor.dx * weight,
+        anchor.dy * weight,
+      );
+      totalWeight += weight;
     }
 
-    // If 2 anchors, use 2-point trilateration
-    if (validLinks.length == 2) {
-      final a1 = anchors[validLinks[0]['A']]!;
-      final a2 = anchors[validLinks[1]['A']]!;
-      final d1 = double.parse(validLinks[0]['R']);
-      final d2 = double.parse(validLinks[1]['R']);
+    final calculated = Offset(
+      weightedSum.dx / totalWeight,
+      weightedSum.dy / totalWeight,
+    );
 
-      final trilat = _trilaterateTwoAnchors(a1, d1, a2, d2);
-      debugPrint('[LiveLocation] Estimated tag position: $trilat');
-
-      setState(() {
-        tag = Offset(trilat.dx * scale, trilat.dy * scale);
-      });
-      return;
-    }
-
-    // If 3 or more, use weighted average
-    double sx = 0, sy = 0, sw = 0;
-    for (final e in validLinks) {
-      final anchor = anchors[e['A']]!;
-      final dist = double.parse(e['R']);
-      final weight = 1 / (dist == 0 ? 1e-6 : dist);  // Avoid divide by zero
-      sx += anchor.dx * weight;
-      sy += anchor.dy * weight;
-      sw += weight;
-    }
-
-    final weighted = Offset(sx / sw, sy / sw);
-    debugPrint('[LiveLocation] Weighted average tag position: $weighted');
+    debugPrint('Calculated position: $calculated');
 
     setState(() {
-      tag = Offset(weighted.dx * scale, weighted.dy * scale);
+      tag = _clampTagToBounds(calculated);
+      _lastValidTagPosition = tag;
     });
-
   } catch (e) {
-    debugPrint('[LiveLocation] Error parsing payload: $e');
+    debugPrint('Error processing payload: $e');
   }
 }
-
-Offset _trilaterateTwoAnchors(Offset a, double da, Offset b, double db) {
-  final dx = b.dx - a.dx;
-  final dy = b.dy - a.dy;
-  final dist = sqrt(dx * dx + dy * dy);
-
-  final cosA = (db * db + dist * dist - da * da) / (2 * db * dist);
-  if (cosA.abs() > 1.0) return a;
-
-  final px = db * cosA;
-  final py = db * sqrt(1 - cosA * cosA);
-  final angle = atan2(dy, dx);
-  final rx = px * cos(angle) - py * sin(angle);
-  final ry = px * sin(angle) + py * cos(angle);
-
-  return Offset(a.dx + rx, a.dy + ry);
-}
-
 
   Future<void> _loadHouseList() async {
     final raw = await DatabaseService.fetchHouses();
@@ -132,32 +101,37 @@ Offset _trilaterateTwoAnchors(Offset a, double da, Offset b, double db) {
     if (houseOptions.isNotEmpty) {
       selectedHouseName = houseOptions.first['name'] as String;
     }
-    debugPrint('[LiveLocation] Houses: $houseOptions');
+    //debugPrint('[LiveLocation] Houses: $houseOptions');
     await _loadRooms();
   }
+
+  Offset _clampTagToBounds(Offset input) {
+  if (rooms.isEmpty) return input;
+  final minX = rooms.map((r) => r.position.dx).reduce(min);
+  final minY = rooms.map((r) => r.position.dy).reduce(min);
+  final maxX = rooms.map((r) => r.position.dx + r.width).reduce(max);
+  final maxY = rooms.map((r) => r.position.dy + r.height).reduce(max);
+
+  return Offset(
+    input.dx.clamp(minX, maxX),
+    input.dy.clamp(minY, maxY),
+  );
+}
 
   Future<void> _loadRooms() async {
     if (selectedHouseName == null) return;
     final rows = await DatabaseService.getRoomsByHouseName(selectedHouseName!);
     rooms = rows.map(_roomFromDb).toList();
-    for (final room in rooms) {
-      debugPrint('[LiveLocation] Room "${room.name}" at ${room.position} → ${room.width}x${room.height}');
-    }
     double minX = rooms.map((room) => room.position.dx).reduce((a, b) => a < b ? a : b);
     double minY = rooms.map((room) => room.position.dy).reduce((a, b) => a < b ? a : b);
-    double maxX = rooms.map((room) => room.position.dx + room.width).reduce((a, b) => a > b ? a : b);
-    double maxY = rooms.map((room) => room.position.dy + room.height).reduce((a, b) => a > b ? a : b);
-    debugPrint('[LiveLocation] Room Bounds: minX=$minX, minY=$minY, maxX=$maxX, maxY=$maxY');
-    debugPrint('[LiveLocation] Map size: ${maxX - minX} x ${maxY - minY}');
+    //debugPrint('[LiveLocation] Room Bounds: minX=$minX, minY=$minY, maxX=$maxX, maxY=$maxY');
+    //debugPrint('[LiveLocation] Map size: ${maxX - minX} x ${maxY - minY}');
       
     setState(() {
       offset = Offset(-minX * scale + 20, -minY * scale + 20); // Center initial view
-      tag = Offset(
-      tag.dx.clamp(minX, maxX),
-      tag.dy.clamp(minY, maxY),
-      );
-      debugPrint('[LiveLocation] Map offset: $offset');
-      debugPrint('[LiveLocation] Confined tag: $tag');
+      // Confine the tag position within the room bounds
+      //debugPrint('[LiveLocation] Map offset: $offset');
+      //debugPrint('[LiveLocation] Confined tag: $tag');
       });
   }
 
@@ -200,7 +174,10 @@ Offset _trilaterateTwoAnchors(Offset a, double da, Offset b, double db) {
 
   @override
   Widget build(BuildContext context) {
-
+    final tagScreenPosition = Offset(
+      tag.dx * scale + offset.dx,
+      tag.dy * scale + offset.dy,
+    );
     return Scaffold(
       appBar: AppBar(title: const Text('Live Location Map')),
       body: Column(
@@ -234,8 +211,8 @@ Offset _trilaterateTwoAnchors(Offset a, double da, Offset b, double db) {
                   ),
                   for (final room in rooms)
                     Positioned(
-                      left: room.position.dx,
-                      top: room.position.dy,
+                      left: room.position.dx * scale + offset.dx,
+                      top: room.position.dy *  scale + offset.dy,
                       child: Container(
                         width: room.width * scale,
                         height: room.height * scale,
@@ -253,8 +230,8 @@ Offset _trilaterateTwoAnchors(Offset a, double da, Offset b, double db) {
                       ),
                     ),
                     Positioned(
-                      left: tag.dx,
-                      top: tag.dy,
+                      left: tagScreenPosition.dx,
+                      top: tagScreenPosition.dy,
                       child: const Icon(Icons.person_pin_circle,
                           size: 30, color: Colors.green),
               ),
