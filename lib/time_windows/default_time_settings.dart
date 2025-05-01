@@ -32,17 +32,17 @@ class _DefaultTimeSettingsPageState extends State<DefaultTimeSettingsPage> {
     final prefs = await SharedPreferences.getInstance();
     int userId = prefs.getInt('user_id') ?? -1;
 
-    print("DEBUG: Retrieved user_id from SharedPreferences: $userId");
+   // print("DEBUG: Retrieved user_id from SharedPreferences: $userId");
 
     if (userId == -1) {
-        print("DEBUG: User ID not found in SharedPreferences, attempting database lookup...");
+       // print("DEBUG: User ID not found in SharedPreferences, attempting database lookup...");
         List<Map<String, dynamic>> users = await db.getUsers();
         if (users.isNotEmpty) {
             userId = users.first['id'] ?? -1;
             await prefs.setInt('user_id', userId);
-            print("DEBUG: Retrieved user_id from DB and saved: $userId");
+           // print("DEBUG: Retrieved user_id from DB and saved: $userId");
         } else {
-            print("DEBUG: No users found in the database.");
+           // print("DEBUG: No users found in the database.");
             return;
         }
     }
@@ -51,7 +51,7 @@ class _DefaultTimeSettingsPageState extends State<DefaultTimeSettingsPage> {
     var user = userData.firstWhere((u) => u['id'] == userId, orElse: () => {});
 
     if (user.isNotEmpty) {
-        print("DEBUG: Retrieved user settings from DB: $user");
+       // print("DEBUG: Retrieved user settings from DB: $user");
 
         int startWindow = user['start_window'] is int
             ? user['start_window']
@@ -61,16 +61,16 @@ class _DefaultTimeSettingsPageState extends State<DefaultTimeSettingsPage> {
             ? user['end_window']
             : _convertToInt(user['end_window']);
 
-        print("DEBUG: Corrected StartWindow: $startWindow, EndWindow: $endWindow");
+       // print("DEBUG: Corrected StartWindow: $startWindow, EndWindow: $endWindow");
 
         setState(() {
             monitoringStartTime = _epochToTime(startWindow);
             monitoringEndTime = _epochToTime(endWindow);
         });
 
-        print("DEBUG: Updated UI with new settings - Start: $monitoringStartTime, End: $monitoringEndTime");
+       // print("DEBUG: Updated UI with new settings - Start: $monitoringStartTime, End: $monitoringEndTime");
     } else {
-        print("DEBUG: No user settings found for user ID $userId in database");
+       // print("DEBUG: No user settings found for user ID $userId in database");
     }
   }
 
@@ -87,7 +87,7 @@ class _DefaultTimeSettingsPageState extends State<DefaultTimeSettingsPage> {
             return parsedValue;
         }
     }
-    print("WARNING: Unexpected data type for time value: $value (${value.runtimeType})");
+   // print("WARNING: Unexpected data type for time value: $value (${value.runtimeType})");
     return 0;  // Return 0 instead of 28800000 to avoid forcing an incorrect time
   }
 
@@ -112,14 +112,14 @@ class _DefaultTimeSettingsPageState extends State<DefaultTimeSettingsPage> {
     int userId = prefs.getInt('user_id') ?? -1;
 
     if (userId == -1) {
-        print("DEBUG: No valid user ID found for saving settings.");
+       // print("DEBUG: No valid user ID found for saving settings.");
         return;
     }
 
     int startEpoch = _timeToEpoch(monitoringStartTime!);
     int endEpoch = _timeToEpoch(monitoringEndTime!);
 
-    print("DEBUG: Attempting to update user time window - Start: $monitoringStartTime ($startEpoch), End: $monitoringEndTime ($endEpoch)");
+   // print("DEBUG: Attempting to update user time window - Start: $monitoringStartTime ($startEpoch), End: $monitoringEndTime ($endEpoch)");
 
     await db.updateUserTimeWindow(userId, startEpoch, endEpoch);
 
@@ -137,7 +137,7 @@ class _DefaultTimeSettingsPageState extends State<DefaultTimeSettingsPage> {
     await Future.delayed(const Duration(milliseconds: 500)); // Ensure DB transaction completes
     await loadUserSettings();
 
-    print("DEBUG: Successfully updated and reloaded user settings.");
+   // print("DEBUG: Successfully updated and reloaded user settings.");
     
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Time settings updated successfully!')),
@@ -153,25 +153,25 @@ class _DefaultTimeSettingsPageState extends State<DefaultTimeSettingsPage> {
     final prefs = await SharedPreferences.getInstance();
     int? userId = prefs.getInt('user_id');
 
-    print("DEBUG: Attempting to revert settings for user ID: $userId");
+   // print("DEBUG: Attempting to revert settings for user ID: $userId");
 
     if (userId != null && userId != -1) {
         await db.revertToDefaultTimeWindow(userId);
-        print("DEBUG: User reverted to default settings successfully");
+       // print("DEBUG: User reverted to default settings successfully");
         await loadUserSettings();
     } else {
-        print("DEBUG: Failed to revert settings - user ID not found, retrying fetch from DB");
+       // print("DEBUG: Failed to revert settings - user ID not found, retrying fetch from DB");
 
         // Fetch the first user from the database and retry
         List<Map<String, dynamic>> users = await db.getUsers();
         if (users.isNotEmpty) {
             int newUserId = users.first['id'];
             await prefs.setInt('user_id', newUserId);
-            print("DEBUG: Retrieved user_id from DB and saved: $newUserId");
+           // print("DEBUG: Retrieved user_id from DB and saved: $newUserId");
             await db.revertToDefaultTimeWindow(newUserId);
             await loadUserSettings();
         } else {
-            print("DEBUG: No user found in DB");
+           // print("DEBUG: No user found in DB");
         }
     }
 
@@ -197,7 +197,7 @@ class _DefaultTimeSettingsPageState extends State<DefaultTimeSettingsPage> {
     DateTime date = DateTime.fromMillisecondsSinceEpoch(epoch, isUtc: true).toLocal();
     String formattedTime = '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
     
-    print("DEBUG: Converted epoch $epoch to time string: $formattedTime");
+   // print("DEBUG: Converted epoch $epoch to time string: $formattedTime");
     return formattedTime;
   }
 
@@ -238,7 +238,7 @@ class _DefaultTimeSettingsPageState extends State<DefaultTimeSettingsPage> {
                     setState(() {
                       monitoringStartTime = value;
                     });
-                    print("DEBUG: Start time changed to $monitoringStartTime");
+                   // print("DEBUG: Start time changed to $monitoringStartTime");
                   },
                 ),
                 const Text('to'),
@@ -255,7 +255,7 @@ class _DefaultTimeSettingsPageState extends State<DefaultTimeSettingsPage> {
                     setState(() {
                       monitoringEndTime = value;
                     });
-                    print("DEBUG: End time changed to $monitoringEndTime");
+                   // print("DEBUG: End time changed to $monitoringEndTime");
                   },
                 ),
               ],

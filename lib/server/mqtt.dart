@@ -39,11 +39,11 @@ Future<void> startMqttConnection() async {
     client!.updates!.listen((events) {
       final rec = events.first.payload as MqttPublishMessage;
       final payload = MqttPublishPayload.bytesToStringAsString(rec.payload.message);
-      //debugPrint('[MQTT] payload: $payload');
+      // debugPrint('[MQTT] payload: $payload');
       uwbPayload$.add(payload);
     });
   } catch (e) {
-    debugPrint('[MQTT] connect error: $e');
+    // debugPrint('[MQTT] connect error: $e');
     client!.disconnect();
   }
 }

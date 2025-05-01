@@ -57,7 +57,7 @@ class _LiveLocationMapPageState extends State<LiveLocationMapPage> {
   }
 
   void _handleTagPayload(String payload) {
-    //debugPrint("[LiveLocation] Raw Payload: $payload");
+    //// debugPrint("[LiveLocation] Raw Payload: $payload");
     
   try {
     final Map<String, dynamic> data = jsonDecode(payload);
@@ -66,14 +66,14 @@ class _LiveLocationMapPageState extends State<LiveLocationMapPage> {
     final Map<String, Offset> anchors = {};
       for (final room in rooms) {
         for (final sensor in room.sensors) {
-          debugPrint('[LiveLocation] Loaded sensor: name=${sensor.name}, pos=${sensor.position}');
+          // debugPrint('[LiveLocation] Loaded sensor: name=${sensor.name}, pos=${sensor.position}');
           final normalized = sensor.name.trim().toUpperCase();
           anchors[normalized] = sensor.position;
 
         }
       }
-      debugPrint('[LiveLocation] Anchors loaded: ${anchors.keys}');
-      debugPrint('[LiveLocation] Incoming links: ${links.map((l) => l['A'])}');
+      // debugPrint('[LiveLocation] Anchors loaded: ${anchors.keys}');
+      // debugPrint('[LiveLocation] Incoming links: ${links.map((l) => l['A'])}');
 
 
 
@@ -112,13 +112,13 @@ class _LiveLocationMapPageState extends State<LiveLocationMapPage> {
       weightedSum.dy / totalWeight,
     );
 
-    debugPrint('Calculated position: $calculated');
+    // debugPrint('Calculated position: $calculated');
 
     setState(() {
       tag = calculated;
     });
   } catch (e) {
-    debugPrint('Error processing payload: $e');
+    // debugPrint('Error processing payload: $e');
   }
 }
   
@@ -133,7 +133,7 @@ class _LiveLocationMapPageState extends State<LiveLocationMapPage> {
     if (houseOptions.isNotEmpty) {
       selectedHouseName = houseOptions.first['name'] as String;
     }
-    //debugPrint('[LiveLocation] Houses: $houseOptions');
+    //// debugPrint('[LiveLocation] Houses: $houseOptions');
     await _loadRooms();
   }
 
@@ -164,8 +164,8 @@ class _LiveLocationMapPageState extends State<LiveLocationMapPage> {
         final list = jsonDecode(_safeStr(sJson)) as List<dynamic>;
         sensors = list.map((e) => Sensor.fromJson(e)).toList();
       } catch (_) {}
-      // debugPrint('[LiveLocation] Raw sensor JSON: $sJson');
-      // debugPrint('[LiveLocation] Parsed sensors: ${sensors.map((s) => s.name)}');
+      // // debugPrint('[LiveLocation] Raw sensor JSON: $sJson');
+      // // debugPrint('[LiveLocation] Parsed sensors: ${sensors.map((s) => s.name)}');
     }
 
     return Room(

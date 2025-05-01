@@ -21,14 +21,14 @@ Future<void> requestPermissions() async {
   if (statuses[Permission.location]!.isDenied ||
       statuses[Permission.locationWhenInUse]!.isDenied ||
       statuses[Permission.locationAlways]!.isDenied) {
-    print("⚠️ Location permissions denied!");
+   // print(" Location permissions denied!");
   }
 }
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  await requestPermissions(); // 🔥 Ensure location permissions are granted
+  await requestPermissions(); //  Ensure location permissions are granted
     AwesomeNotifications().initialize(
     null, // icon (use default app icon)
     [

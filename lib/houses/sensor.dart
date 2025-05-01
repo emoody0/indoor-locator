@@ -35,7 +35,7 @@ class Sensor {
             (parsed['y'] as num?)?.toDouble() ?? 0.0,
           );
         } catch (e) {
-          print("Error parsing position: $e");
+         // print("Error parsing position: $e");
           return const Offset(0.0, 0.0);
         }
       } else if (value is Map<String, dynamic>) {

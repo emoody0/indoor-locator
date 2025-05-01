@@ -249,7 +249,7 @@ class DatabaseHelper {
 
         return fullDateTime.millisecondsSinceEpoch;
     } catch (e) {
-        print("ERROR parsing time: '$timeString' - ${e.toString()}");
+       // print("ERROR parsing time: '$timeString' - ${e.toString()}");
         return 28800000; // Default to 8:00 AM if parsing fails
     }
   }
@@ -262,7 +262,7 @@ class DatabaseHelper {
   List<Map<String, dynamic>> results = await db.query('users');
 
     if (results.isEmpty) {
-      print("[DEBUG] No users found. Inserting default user...");
+     // print("[DEBUG] No users found. Inserting default user...");
 
       //Insert a default user to bypass login issues
       await insertUser({

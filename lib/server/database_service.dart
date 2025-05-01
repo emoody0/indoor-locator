@@ -56,7 +56,7 @@ class DatabaseService {
         };
       }).toList();
     } catch (e) {
-      print("[ERROR] Failed to fetch users with house names: $e");
+     // print("[ERROR] Failed to fetch users with house names: $e");
       return [];
     } finally {
       await conn.close();
@@ -80,11 +80,11 @@ class DatabaseService {
           : int.tryParse(userData['house_id']?.toString() ?? '');
 
       if (name.isEmpty || email.isEmpty) {
-        print("[ERROR] Name and Email cannot be empty.");
+       // print("[ERROR] Name and Email cannot be empty.");
         return;
       }
 
-      print("[DEBUG] Final House ID before insert: $houseId");
+     // print("[DEBUG] Final House ID before insert: $houseId");
 
       // Make sure we're inserting a valid house_id
       await conn.query(
@@ -95,9 +95,9 @@ class DatabaseService {
         [name, email, userType, houseId ?? null], // Ensure NULL is explicitly handled
       );
 
-      print('[SUCCESS] User inserted successfully into MariaDB.');
+     // print('[SUCCESS] User inserted successfully into MariaDB.');
     } catch (e) {
-      print('[ERROR] Failed to insert user into MariaDB: $e');
+     // print('[ERROR] Failed to insert user into MariaDB: $e');
     } finally {
       await conn.close();
     }
@@ -116,9 +116,9 @@ class DatabaseService {
         ''',
         [updatedData['name'], updatedData['email'], updatedData['userType'], updatedData['house_id'], userId],
       );
-      print('[SUCCESS] User updated successfully');
+     // print('[SUCCESS] User updated successfully');
     } catch (e) {
-      print('[ERROR] Failed to update user: $e');
+     // print('[ERROR] Failed to update user: $e');
     } finally {
       await conn.close();
     }
@@ -158,7 +158,7 @@ class DatabaseService {
   static Future<void> sendHouseData(int houseId, String houseName, List<Map<String, dynamic>> rooms) async {
     final conn = await MySqlConnection.connect(settings);
     try {
-      print("[MariaDB] Inserting/Updating House: $houseName");
+     // print("[MariaDB] Inserting/Updating House: $houseName");
 
       // Insert house (ON DUPLICATE KEY UPDATE ensures no duplicate house names)
       await conn.query(
@@ -170,14 +170,14 @@ class DatabaseService {
       var result = await conn.query('SELECT id FROM Houses WHERE name = ?', [houseName]);
       if (result.isNotEmpty) {
         houseId = result.first['id']; // Assign the retrieved house ID
-        print("[MariaDB] Retrieved House ID: $houseId");
+       // print("[MariaDB] Retrieved House ID: $houseId");
       } else {
-        print("[ERROR] Failed to retrieve house ID.");
+       // print("[ERROR] Failed to retrieve house ID.");
         return;
       }
 
       for (var room in rooms) {
-        print("[MariaDB] Processing Room: $room");
+       // print("[MariaDB] Processing Room: $room");
 
         // Ensure position values are correctly extracted
         var position = room['position'];
@@ -190,7 +190,7 @@ class DatabaseService {
             posX = decodedPosition['x'] ?? 0.0;
             posY = decodedPosition['y'] ?? 0.0;
           } catch (e) {
-            print("[ERROR] Failed to decode position JSON: $e");
+           // print("[ERROR] Failed to decode position JSON: $e");
           }
         } else if (position is Map) {
           posX = position['x'] ?? 0.0;
@@ -214,12 +214,12 @@ class DatabaseService {
             posY,
           ],
         );
-        print("[SUCCESS] Room ${room['name']} inserted/updated.");
+       // print("[SUCCESS] Room ${room['name']} inserted/updated.");
       }
 
-      print("[SUCCESS] House and rooms successfully synced.");
+     // print("[SUCCESS] House and rooms successfully synced.");
     } catch (e) {
-      print("[ERROR] Failed to send house data to MariaDB: $e");
+     // print("[ERROR] Failed to send house data to MariaDB: $e");
     } finally {
       await conn.close();
     }
@@ -235,7 +235,7 @@ class DatabaseService {
       );
       return results.map((row) => row.fields).toList();
     } catch (e) {
-      print('[ERROR] Failed to fetch rooms from server: $e');
+     // print('[ERROR] Failed to fetch rooms from server: $e');
       return [];
     } finally {
       await conn.close();
@@ -249,9 +249,9 @@ class DatabaseService {
         'DELETE FROM Rooms WHERE houseName = ? AND name = ?',
         [houseName, roomName]
       );
-      print('[SUCCESS] Deleted room "$roomName" from server.');
+     // print('[SUCCESS] Deleted room "$roomName" from server.');
     } catch (e) {
-      print('[ERROR] Failed to delete room: $e');
+     // print('[ERROR] Failed to delete room: $e');
     } finally {
       await conn.close();
     }
@@ -269,9 +269,9 @@ class DatabaseService {
           room.houseName, room.name
         ]
       );
-      print('[SUCCESS] Updated room "${room.name}" on server.');
+     // print('[SUCCESS] Updated room "${room.name}" on server.');
     } catch (e) {
-      print('[ERROR] Failed to update room: $e');
+     // print('[ERROR] Failed to update room: $e');
     } finally {
       await conn.close();
     }
@@ -295,21 +295,21 @@ class DatabaseService {
   static Future<int?> getHouseIdByName(String houseName) async {
     final conn = await MySqlConnection.connect(settings);
     try {
-      print("[DEBUG] Querying house ID for house name: $houseName");
+     // print("[DEBUG] Querying house ID for house name: $houseName");
       var results = await conn.query(
         'SELECT id FROM Houses WHERE name = ? LIMIT 1',
         [houseName]
       );
 
       if (results.isNotEmpty) {
-        print("[DEBUG] Found House ID: ${results.first[0]} for house: $houseName");
+       // print("[DEBUG] Found House ID: ${results.first[0]} for house: $houseName");
         return results.first[0] as int; // Retrieve house ID
       } else {
-        print("[ERROR] No house found with name: $houseName");
+       // print("[ERROR] No house found with name: $houseName");
         return null; // House not found
       }
     } catch (e) {
-      print('[ERROR] Failed to retrieve house ID: $e');
+     // print('[ERROR] Failed to retrieve house ID: $e');
       return null;
     } finally {
       await conn.close();
@@ -329,9 +329,9 @@ class DatabaseService {
           room.connectedWall, room.houseName, room.sensors
         ]
       );
-      print('[SUCCESS] Added room "${room.name}" to server.');
+     // print('[SUCCESS] Added room "${room.name}" to server.');
     } catch (e) {
-      print('[ERROR] Failed to insert room: $e');
+     // print('[ERROR] Failed to insert room: $e');
     } finally {
       await conn.close();
     }

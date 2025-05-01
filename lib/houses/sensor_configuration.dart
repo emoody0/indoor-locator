@@ -28,7 +28,7 @@ class _SensorConfigurationPageState extends State<SensorConfigurationPage>
   }
 
   void _resetInputs({bool fullReset = true}) {
-    print("Reset Inputs Triggered - fullReset: $fullReset"); // Debugging print statement
+   // print("Reset Inputs Triggered - fullReset: $fullReset"); // Debugging print statement
     if (fullReset) {
         nameController.text = nameController.text.isNotEmpty ? nameController.text : "";
         distanceFeetController.text = distanceFeetController.text.isNotEmpty ? distanceFeetController.text : "";
@@ -176,7 +176,7 @@ class _SensorConfigurationPageState extends State<SensorConfigurationPage>
                     ))
                 .toList(),
             onChanged: (value) {
-              print("Wall changed to: $value"); // Debugging print statement
+             // print("Wall changed to: $value"); // Debugging print statement
               if (selectedWall != value) {
                 setState(() {
                   selectedWall = value; 
