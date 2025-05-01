@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
@@ -18,12 +17,12 @@ class _LiveLocationMapPageState extends State<LiveLocationMapPage> {
   final List<Map<String, dynamic>> houseOptions = [];
   String? selectedHouseName;
   List<Room> rooms = [];
-  Offset tag = Offset.zero; // Placeholder for the tag position
+  Offset? lastKnownPosition = const Offset(197.3, 219.4); // example default
   double scale = 10.0;
+  Offset tag = Offset.zero;
   Offset offset = Offset.zero;
-  StreamSubscription? _tagStream;
   Timer? _refreshTimer;
-  Offset? _lastValidTagPosition;
+  StreamSubscription? _tagStream;
 
   @override
   void initState() {
@@ -33,14 +32,16 @@ class _LiveLocationMapPageState extends State<LiveLocationMapPage> {
 
   Future<void> _init() async {
     await startMqttConnection();
+    _tagStream = uwbPayload$.stream.listen(_handleTagPayload);
     await _loadHouseList();
     _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       _loadRooms();
     });
-     _tagStream = uwbPayload$.stream.listen(_handleTagPayload);
+    
   }
 
   void _handleTagPayload(String payload) {
+    //debugPrint("[LiveLocation] Raw Payload: $payload");
   try {
     final Map<String, dynamic> data = jsonDecode(payload);
     final links = List<dynamic>.from(data['links'] ?? []);
@@ -83,8 +84,7 @@ class _LiveLocationMapPageState extends State<LiveLocationMapPage> {
     debugPrint('Calculated position: $calculated');
 
     setState(() {
-      tag = _clampTagToBounds(calculated);
-      _lastValidTagPosition = tag;
+      tag = calculated;
     });
   } catch (e) {
     debugPrint('Error processing payload: $e');
@@ -105,33 +105,22 @@ class _LiveLocationMapPageState extends State<LiveLocationMapPage> {
     await _loadRooms();
   }
 
-  Offset _clampTagToBounds(Offset input) {
-  if (rooms.isEmpty) return input;
-  final minX = rooms.map((r) => r.position.dx).reduce(min);
-  final minY = rooms.map((r) => r.position.dy).reduce(min);
-  final maxX = rooms.map((r) => r.position.dx + r.width).reduce(max);
-  final maxY = rooms.map((r) => r.position.dy + r.height).reduce(max);
-
-  return Offset(
-    input.dx.clamp(minX, maxX),
-    input.dy.clamp(minY, maxY),
-  );
-}
-
   Future<void> _loadRooms() async {
     if (selectedHouseName == null) return;
     final rows = await DatabaseService.getRoomsByHouseName(selectedHouseName!);
     rooms = rows.map(_roomFromDb).toList();
+    // for (final room in rooms) {
+    //   debugPrint('[LiveLocation] Room "${room.name}" at ${room.position} → ${room.width}x${room.height}');
+    // }
     double minX = rooms.map((room) => room.position.dx).reduce((a, b) => a < b ? a : b);
     double minY = rooms.map((room) => room.position.dy).reduce((a, b) => a < b ? a : b);
-    //debugPrint('[LiveLocation] Room Bounds: minX=$minX, minY=$minY, maxX=$maxX, maxY=$maxY');
-    //debugPrint('[LiveLocation] Map size: ${maxX - minX} x ${maxY - minY}');
-      
-    setState(() {
+    // double maxX = rooms.map((room) => room.position.dx + room.width).reduce((a, b) => a > b ? a : b);
+    // double maxY = rooms.map((room) => room.position.dy + room.height).reduce((a, b) => a > b ? a : b);
+    // // debugPrint('[LiveLocation] Room Bounds: minX=$minX, minY=$minY, maxX=$maxX, maxY=$maxY');
+    // debugPrint('[LiveLocation] Map size: ${maxX - minX} x ${maxY - minY}');
+     setState(() {
       offset = Offset(-minX * scale + 20, -minY * scale + 20); // Center initial view
-      // Confine the tag position within the room bounds
       //debugPrint('[LiveLocation] Map offset: $offset');
-      //debugPrint('[LiveLocation] Confined tag: $tag');
       });
   }
 
@@ -174,10 +163,8 @@ class _LiveLocationMapPageState extends State<LiveLocationMapPage> {
 
   @override
   Widget build(BuildContext context) {
-    final tagScreenPosition = Offset(
-      tag.dx * scale + offset.dx,
-      tag.dy * scale + offset.dy,
-    );
+    final tagScreenPosition = tag;
+
     return Scaffold(
       appBar: AppBar(title: const Text('Live Location Map')),
       body: Column(
@@ -194,7 +181,7 @@ class _LiveLocationMapPageState extends State<LiveLocationMapPage> {
                       ))
                   .toList(),
               onChanged: (v) async {
-               setState(() => selectedHouseName = v);
+                selectedHouseName = v;
                 await _loadRooms();
               },
             ),
@@ -211,8 +198,8 @@ class _LiveLocationMapPageState extends State<LiveLocationMapPage> {
                   ),
                   for (final room in rooms)
                     Positioned(
-                      left: room.position.dx * scale + offset.dx,
-                      top: room.position.dy *  scale + offset.dy,
+                      left: room.position.dx,
+                      top: room.position.dy,
                       child: Container(
                         width: room.width * scale,
                         height: room.height * scale,
@@ -229,12 +216,12 @@ class _LiveLocationMapPageState extends State<LiveLocationMapPage> {
                         ),
                       ),
                     ),
-                    Positioned(
-                      left: tagScreenPosition.dx,
-                      top: tagScreenPosition.dy,
-                      child: const Icon(Icons.person_pin_circle,
-                          size: 30, color: Colors.green),
-              ),
+                  Positioned(
+                    left: tagScreenPosition.dx,
+                    top: tagScreenPosition.dy,
+                    child: const Icon(Icons.person_pin_circle,
+                        size: 30, color: Colors.green),
+                  ),
                 ],
               ),
             ),

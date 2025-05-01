@@ -4,7 +4,7 @@ import '../houses/room.dart'; // Adjust path if needed
 
 class DatabaseService {
   static final ConnectionSettings settings = ConnectionSettings(
-    host: '192.168.119.63',
+    host: '192.168.191.63',
     port: 3306,
     user: 'homeassistant',
     password: 'SQL123!',

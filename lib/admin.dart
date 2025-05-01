@@ -122,27 +122,6 @@ class AdminPortal extends StatelessWidget {
                 );
               },
             ),
-            // ListTile(
-            //   title: const Text('MQTT Debug'),
-            //   onTap: () {
-            //     Navigator.push(
-            //       context,
-            //       MaterialPageRoute(builder: (context) => const MQTTPage()),
-            //     );
-            //   },
-            // ),
-            ListTile(
-              leading: const Icon(Icons.network_wifi),
-              title: const Text('User Location'),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const LiveLocationMapPage(),
-                  ),
-                );
-              },
-            ),
             ListTile(
               leading: const Icon(Icons.logout),
               title: const Text('Log Out'),
@@ -151,25 +130,7 @@ class AdminPortal extends StatelessWidget {
           ],
         ),
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            FutureBuilder<String>(
-              future: _getCurrentUser(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const CircularProgressIndicator();
-                }
-                return Text(
-                  'Logged in as: ${snapshot.data}',
-                  style: const TextStyle(fontSize: 24),
-                );
-              },
-            ),
-          ],
-        ),
-      ),
+      body: LiveLocationMapPage(),
     );
   }
-}
+  }
