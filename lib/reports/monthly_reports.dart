@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import '../config.dart';
 import '../server/database_helper.dart';
+import 'package:provider/provider.dart';
+import '../theme_color_notifier.dart'; //
 
 class MonthlyReportsPage extends StatefulWidget {
   final bool isAdmin;
@@ -74,7 +75,7 @@ class _MonthlyReportsPageState extends State<MonthlyReportsPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.isAdmin ? 'Admin Monthly Reports' : 'Resident Monthly Reports'),
-        backgroundColor: AppColors.primaryColor,
+        backgroundColor: Provider.of<ThemeColorNotifier>(context).primaryColor,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),

@@ -69,34 +69,34 @@ class _SensorConfigurationPageState extends State<SensorConfigurationPage>
     );
   }
 
-  void _updateConnectedRooms(Room draggedRoom, Offset delta, [Set<Room>? visited]) {
-    visited ??= {};
-    if (visited.contains(draggedRoom)) return;
+  // void _updateConnectedRooms(Room draggedRoom, Offset delta, [Set<Room>? visited]) {
+  //   visited ??= {};
+  //   if (visited.contains(draggedRoom)) return;
 
-    visited.add(draggedRoom);
-    draggedRoom.position += delta;
+  //   visited.add(draggedRoom);
+  //   draggedRoom.position += delta;
 
-    for (final room in widget.rooms.where((room) => _areRoomsConnected(draggedRoom, room))) {
-      _updateConnectedRooms(room, delta, visited);
-    }
-  }
+  //   for (final room in widget.rooms.where((room) => _areRoomsConnected(draggedRoom, room))) {
+  //     _updateConnectedRooms(room, delta, visited);
+  //   }
+  // }
 
 
 
-  bool _areRoomsConnected(Room room1, Room room2) {
-    // Logic to determine if two rooms are connected
-    final room1Right = room1.position.dx + room1.width * 10.0;
-    final room1Bottom = room1.position.dy + room1.height * 10.0;
-    final room2Right = room2.position.dx + room2.width * 10.0;
-    final room2Bottom = room2.position.dy + room2.height * 10.0;
+  // bool _areRoomsConnected(Room room1, Room room2) {
+  //   // Logic to determine if two rooms are connected
+  //   final room1Right = room1.position.dx + room1.width * 10.0;
+  //   final room1Bottom = room1.position.dy + room1.height * 10.0;
+  //   final room2Right = room2.position.dx + room2.width * 10.0;
+  //   final room2Bottom = room2.position.dy + room2.height * 10.0;
 
-    final horizontallyAligned =
-        (room1.position.dy == room2.position.dy || room1Bottom == room2.position.dy);
-    final verticallyAligned =
-        (room1.position.dx == room2.position.dx || room1Right == room2.position.dx);
+  //   final horizontallyAligned =
+  //       (room1.position.dy == room2.position.dy || room1Bottom == room2.position.dy);
+  //   final verticallyAligned =
+  //       (room1.position.dx == room2.position.dx || room1Right == room2.position.dx);
 
-    return horizontallyAligned || verticallyAligned;
-  }
+  //   return horizontallyAligned || verticallyAligned;
+  // }
 
   List<Widget> _buildSensorIcons(Room room) {
     return room.sensors.map((sensor) {

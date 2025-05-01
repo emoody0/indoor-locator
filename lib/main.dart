@@ -1,12 +1,15 @@
-
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'server/database_helper.dart';
+import '../server/database_helper.dart';
 import 'admin.dart';
 import 'resident.dart';
 import 'backgroundmanager.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:awesome_notifications/awesome_notifications.dart';
+import 'package:provider/provider.dart';
+import 'theme_color_notifier.dart'; //
+
 
 Future<void> requestPermissions() async {
   Map<Permission, PermissionStatus> statuses = await [
@@ -26,6 +29,20 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
   await requestPermissions(); // 🔥 Ensure location permissions are granted
+    AwesomeNotifications().initialize(
+    null, // icon (use default app icon)
+    [
+      NotificationChannel(
+        channelKey: 'weekly_alerts',
+        channelName: 'Weekly Alerts',
+        channelDescription: 'Notification channel for weekly summaries and rewards',
+        defaultColor: const Color(0xFF9D50DD),
+        ledColor: Colors.white,
+        importance: NotificationImportance.High,
+        channelShowBadge: true,
+      )
+    ],
+  );
 
   FlutterForegroundTask.init(
     androidNotificationOptions: AndroidNotificationOptions(
@@ -78,9 +95,15 @@ void main() async {
     ),
   );
 
+
   initializeBackgroundManager(); // Start the background task
-  
-  runApp(MyApp());
+
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => ThemeColorNotifier(),
+      child: const MyApp(),
+    )
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -91,6 +114,7 @@ class MyApp extends StatelessWidget {
     String lastUser = prefs.getString('logged_in_user') ?? '';
     int? userId = prefs.getInt('user_id');
 
+    
     final db = DatabaseHelper();
     if (lastUser.isEmpty || userId == null || userId == -1) {
       List<Map<String, dynamic>> users = await db.getUsers();
@@ -111,25 +135,40 @@ class MyApp extends StatelessWidget {
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const MaterialApp(
-              home: Scaffold(
-                  body: Center(child: CircularProgressIndicator())));
+            home: Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            ),
+          );
         }
 
-        if (snapshot.data == 'admin') {
-          return MaterialApp(
-              home: AdminPortal(onLogout: () async {
-            final SharedPreferences prefs =
-                await SharedPreferences.getInstance();
-            await prefs.remove('logged_in_user');
-            await prefs.remove('user_id');
-            Navigator.pushAndRemoveUntil(
-              context,
-              MaterialPageRoute(builder: (context) => const LoginScreen()),
-              (Route<dynamic> route) => false,
+        if (snapshot.data == 'admin' || snapshot.data == 'user') {
+          // Ensure ThemeColorNotifier is initialized with the correct user ID
+          WidgetsBinding.instance.addPostFrameCallback((_) async {
+            final prefs = await SharedPreferences.getInstance();
+            final userId = prefs.getInt('user_id');
+            if (userId != null) {
+              Provider.of<ThemeColorNotifier>(context, listen: false).setUserId(userId);
+            }
+          });
+
+          if (snapshot.data == 'admin') {
+            return MaterialApp(
+              home: AdminPortal(
+                onLogout: () async {
+                  final SharedPreferences prefs = await SharedPreferences.getInstance();
+                  await prefs.remove('logged_in_user');
+                  await prefs.remove('user_id');
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (context) => const LoginScreen()),
+                    (Route<dynamic> route) => false,
+                  );
+                },
+              ),
             );
-          }));
-        } else if (snapshot.data == 'user') {
-          return const MaterialApp(home: ResidentPortal());
+          } else {
+            return const MaterialApp(home: ResidentPortal());
+          }
         }
 
         return const MaterialApp(home: LoginScreen());
@@ -161,6 +200,9 @@ class LoginScreen extends StatelessWidget {
 
     await prefs.setString('logged_in_user', userType);
     await prefs.setInt('user_id', matchedUser['id']);
+    Provider.of<ThemeColorNotifier>(context, listen: false)
+    .setUserId(matchedUser['id']);
+
 
     if (userType.toLowerCase() == 'admin') {
       Navigator.pushReplacement(

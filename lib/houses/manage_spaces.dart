@@ -2,7 +2,8 @@
     THIS FILE IS CURRENTLY UNUSED!!!
 */
 import 'package:flutter/material.dart';
-import '../config.dart'; // Import config file
+import 'package:provider/provider.dart';
+import '../theme_color_notifier.dart'; 
 
 class ManageSpacesPage extends StatefulWidget {
   const ManageSpacesPage({super.key});
@@ -19,7 +20,7 @@ class _ManageSpacesPageState extends State<ManageSpacesPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Manage Spaces'),
-        backgroundColor: AppColors.colorScheme.primary, // Use color from config
+        backgroundColor: Provider.of<ThemeColorNotifier>(context).primaryColor, // Use color from config
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {

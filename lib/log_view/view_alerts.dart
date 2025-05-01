@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import '../config.dart';
 import '../server/database_helper.dart';
+import 'package:provider/provider.dart';
+import '../theme_color_notifier.dart'; 
 
 class ViewAlertsPage extends StatefulWidget {
   final bool isAdmin;
@@ -69,7 +70,7 @@ class _ViewAlertsPageState extends State<ViewAlertsPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('View Alerts'),
-        backgroundColor: AppColors.primaryColor,
+        backgroundColor: Provider.of<ThemeColorNotifier>(context).primaryColor,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),

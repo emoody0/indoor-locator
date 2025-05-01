@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../config.dart';
 import 'manage_users_logic.dart';
+import 'package:provider/provider.dart';
+import '../theme_color_notifier.dart';
 
 class EditUserPage extends StatefulWidget {
   final String id;
@@ -124,7 +126,7 @@ class _EditUserPageState extends State<EditUserPage> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Edit User'),
-          backgroundColor: AppColors.colorScheme.primary,
+          backgroundColor: Provider.of<ThemeColorNotifier>(context).primaryColor,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
             onPressed: () => Navigator.pop(context),

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../config.dart';
 import '../server/database_service.dart';
+import 'package:provider/provider.dart';
+import '../theme_color_notifier.dart';
 
 class ViewUserPage extends StatefulWidget {
   final String id;
@@ -49,7 +51,7 @@ class _ViewUserPageState extends State<ViewUserPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('View User'),
-        backgroundColor: AppColors.colorScheme.primary,
+        backgroundColor: Provider.of<ThemeColorNotifier>(context).primaryColor,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),

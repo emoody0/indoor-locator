@@ -7,7 +7,8 @@ import '../../log_view/view_logs.dart';
 import '../../log_view/view_alerts.dart';
 import '../../reports/reports.dart';
 import 'location/live_location_map.dart';
-
+import 'package:provider/provider.dart';
+import 'theme_color_notifier.dart';
 import 'main.dart';
 
 class AdminPortal extends StatelessWidget {
@@ -48,15 +49,15 @@ class AdminPortal extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Admin Portal'),
-        backgroundColor: AppColors.primaryColor,
+        backgroundColor:Provider.of<ThemeColorNotifier>(context).primaryColor,
       ),
       drawer: Drawer(
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
             DrawerHeader(
-              decoration: const BoxDecoration(
-                color: AppColors.primaryColor,
+              decoration: BoxDecoration(
+                color: Provider.of<ThemeColorNotifier>(context).primaryColor,
               ),
               child: Text(
                 'Admin Menu',

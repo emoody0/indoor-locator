@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../config.dart';
+import 'package:provider/provider.dart';
+import '../theme_color_notifier.dart'; 
 import '../server/database_helper.dart';
 
 class ViewLogsPage extends StatefulWidget {
@@ -69,7 +70,7 @@ class _ViewLogsPageState extends State<ViewLogsPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('View Logs'),
-        backgroundColor: AppColors.primaryColor,
+        backgroundColor: Provider.of<ThemeColorNotifier>(context).primaryColor,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),

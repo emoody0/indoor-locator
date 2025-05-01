@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../config.dart';
 import 'manage_users_logic.dart';
+import 'package:provider/provider.dart';
+import '../theme_color_notifier.dart';
 
 class ManageUsersPage extends StatefulWidget {
   const ManageUsersPage({super.key});
@@ -30,7 +32,7 @@ class _ManageUsersPageState extends State<ManageUsersPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Manage Users'),
-        backgroundColor: AppColors.colorScheme.primary,
+        backgroundColor: Provider.of<ThemeColorNotifier>(context).primaryColor,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
