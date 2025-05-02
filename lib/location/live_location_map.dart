@@ -56,26 +56,22 @@ class _LiveLocationMapPageState extends State<LiveLocationMapPage> {
     
   }
 
+  double rssiToDistance(double rssi, {double txPower = -59, double n = 2.0}) {
+      return pow(10, (txPower - rssi) / (10 * n)).toDouble();
+    }
+
   void _handleTagPayload(String payload) {
-    //// debugPrint("[LiveLocation] Raw Payload: $payload");
-    
   try {
     final Map<String, dynamic> data = jsonDecode(payload);
     final links = List<dynamic>.from(data['links'] ?? []);
 
     final Map<String, Offset> anchors = {};
-      for (final room in rooms) {
-        for (final sensor in room.sensors) {
-          // debugPrint('[LiveLocation] Loaded sensor: name=${sensor.name}, pos=${sensor.position}');
-          final normalized = sensor.name.trim().toUpperCase();
-          anchors[normalized] = sensor.position;
-
-        }
+    for (final room in rooms) {
+      for (final sensor in room.sensors) {
+        final normalized = sensor.name.trim().toUpperCase();
+        anchors[normalized] = sensor.position;
       }
-      // debugPrint('[LiveLocation] Anchors loaded: ${anchors.keys}');
-      // debugPrint('[LiveLocation] Incoming links: ${links.map((l) => l['A'])}');
-
-
+    }
 
     final validLinks = links.where((e) {
       final anchorId = e['A'].toString().toUpperCase();
@@ -83,45 +79,103 @@ class _LiveLocationMapPageState extends State<LiveLocationMapPage> {
       if (anchor == null) return false;
       final rssi = double.tryParse(e['db'].toString());
       if (rssi == null) return false;
-      return rssi > -100; // Filter out weak signals
+      return rssi > -100;
     }).toList();
 
     if (validLinks.isEmpty) return;
 
-    // Always use weighted average of all valid anchors
+    // Try trilateration with top 3 strongest signals first
+    if (validLinks.length >= 3) {
+      validLinks.sort((a, b) {
+        final rssiA = double.parse(a['db'].toString());
+        final rssiB = double.parse(b['db'].toString());
+        return rssiB.compareTo(rssiA);
+      });
+
+      final topThree = validLinks.take(3).toList();
+      final List<Offset?> selectedAnchors = [];
+      final List<double> distances = [];
+
+      for (final link in topThree) {
+        final anchorId = link['A'].toString().toUpperCase();
+        final anchorPos = anchors[anchorId];
+        if (anchorPos == null) break;
+
+        final rssi = double.parse(link['db'].toString());
+        double distance = rssiToDistance(rssi);
+        selectedAnchors.add(anchorPos);
+        distances.add(distance);
+      }
+
+      if (selectedAnchors.length == 3 && distances.length == 3) {
+        final calculated = _trilaterate(
+          selectedAnchors[0]!,
+          selectedAnchors[1]!,
+          selectedAnchors[2]!,
+          distances[0],
+          distances[1],
+          distances[2],
+        );
+
+        if (calculated != null) {
+          setState(() => tag = calculated);
+          return;
+        }
+      }
+    }
+
+    // Fallback to weighted average if trilateration fails
     double totalWeight = 0;
     Offset weightedSum = Offset.zero;
-    num rssiToDistance(double rssi, {double txPower = -59, double n = 2.0}) {
-    return pow(10, (txPower - rssi) / (10 * n)).toDouble();
-  }
+
+    
+
     for (final link in validLinks) {
       final anchor = anchors[link['A']]!;
-      final rssi = double.tryParse(link['db'].toString());
-      final distance = rssiToDistance(rssi!);
-      final weight = 1 / (distance + 0.1);  // Add small epsilon to avoid div/0
-      
-      weightedSum += Offset(
-        anchor.dx * weight,
-        anchor.dy * weight,
-      );
+      final rssi = double.parse(link['db'].toString());
+      final distance = rssiToDistance(rssi);
+      final weight = 1 / (distance + 0.1);
+
+      weightedSum += Offset(anchor.dx * weight, anchor.dy * weight);
       totalWeight += weight;
     }
 
-    final calculated = Offset(
+    final fallbackPosition = Offset(
       weightedSum.dx / totalWeight,
       weightedSum.dy / totalWeight,
     );
 
-    // debugPrint('Calculated position: $calculated');
-
-    setState(() {
-      tag = calculated;
-    });
+    setState(() => tag = fallbackPosition);
   } catch (e) {
     // debugPrint('Error processing payload: $e');
   }
 }
-  
+
+Offset? _trilaterate(Offset a, Offset b, Offset c, double d1, double
+d2, double d3) {
+  final x1 = a.dx;
+  final y1 = a.dy;
+  final x2 = b.dx;
+  final y2 = b.dy;
+  final x3 = c.dx;
+  final y3 = c.dy;
+
+  final A = 2 * (x2 - x1);
+  final B = 2 * (y2 - y1);
+  final C = d1 * d1 - d2 * d2 + x2 * x2 + y2 * y2 - x1 * x1 - y1 * y1;
+
+  final D = 2 * (x3 - x1);
+  final E = 2 * (y3 - y1);
+  final F = d1 * d1 - d3 * d3 + x3 * x3 + y3 * y3 - x1 * x1 - y1 * y1;
+
+  final denominator = A * E - B * D;
+  if (denominator == 0) return null;
+
+  final x = (C * E - B * F) / denominator;
+  final y = (A * F - C * D) / denominator;
+
+  return Offset(x, y);
+}
 
   Future<void> _loadHouseList() async {
     final raw = await DatabaseService.fetchHouses();
@@ -247,6 +301,21 @@ class _LiveLocationMapPageState extends State<LiveLocationMapPage> {
                             textAlign: TextAlign.center,
                             style: const TextStyle(color: Colors.white),
                           ),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      left: 10,
+                      bottom: 10,
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.6),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          'User Position: (${(tag.dx / scale).toStringAsFixed(1)} ft, ${(tag.dy / scale).toStringAsFixed(1)} ft)',
+                          style: const TextStyle(color: Colors.white, fontSize: 14),
                         ),
                       ),
                     ),

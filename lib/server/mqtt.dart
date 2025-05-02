@@ -9,7 +9,7 @@ MqttServerClient? client;
 Future<void> startMqttConnection() async {
   if (client?.connectionStatus?.state == MqttConnectionState.connected) return;
 
-  const brokerIp = '192.168.191.63';
+  const brokerIp = '192.168.1.103';
   const port = 1883;
   const username = 'flutter_client';
   const password = 'flutter_client!';
